@@ -35,8 +35,9 @@ export async function scrapeInstagramProfile(username: string): Promise<Instagra
         // The scraper expects directUrls with full Instagram profile URLs
         const input = {
             directUrls: [`https://www.instagram.com/${username}/`],
-            resultsLimit: 12, // Get last 12 posts
-            resultsType: 'posts', // Get posts from the profile
+            resultsLimit: 1, // 'details' returns 1 item per URL
+            resultsType: 'details', // Get full profile details + latest posts
+            checkOldPosts: false,
         };
 
         // Run the Actor and wait for it to finish
@@ -51,7 +52,7 @@ export async function scrapeInstagramProfile(username: string): Promise<Instagra
 
         // Process the scraped data
         const profileData = items[0] as any;
-        const posts = items.filter((item: any) => item.type === 'post' || item.shortCode) as any[];
+        const posts = profileData.latestPosts || []; // Posts are now inside the profile object
 
         // Build profile object
         const profile: InstagramProfile = {
@@ -61,7 +62,7 @@ export async function scrapeInstagramProfile(username: string): Promise<Instagra
             biography: profileData.biography || '',
             profilePicUrl: profileData.profilePicUrl || profileData.profilePicUrlHD || '',
             followersCount: profileData.followersCount || 0,
-            followingCount: profileData.followsCount || profileData.followingCount || 0,
+            followingCount: profileData.followsCount || 0, // 'details' usually returns followsCount
             postsCount: profileData.postsCount || posts.length,
             isVerified: profileData.verified || profileData.isVerified || false,
             isBusinessAccount: profileData.isBusinessAccount || false,
@@ -76,7 +77,7 @@ export async function scrapeInstagramProfile(username: string): Promise<Instagra
             url: post.url || `https://www.instagram.com/p/${post.shortCode}/`,
             type: post.type === 'Video' ? 'Video' : post.type === 'Sidecar' ? 'Sidecar' : 'Image',
             caption: post.caption || '',
-            timestamp: post.timestamp || post.takenAtTimestamp ? new Date(post.takenAtTimestamp * 1000).toISOString() : new Date().toISOString(),
+            timestamp: (post.timestamp || post.takenAtTimestamp) ? new Date((post.takenAtTimestamp ? post.takenAtTimestamp * 1000 : post.timestamp)).toISOString() : new Date().toISOString(),
             likesCount: post.likesCount || 0,
             commentsCount: post.commentsCount || 0,
             videoViewsCount: post.videoViewCount || post.videoPlayCount,
@@ -132,6 +133,79 @@ export async function scrapeInstagramProfile(username: string): Promise<Instagra
             else postingFrequency = 'Less than weekly';
         }
 
+        // --- Advanced Analytics Calculations ---
+
+        // 1. Media Mix & Engagement by Type
+        const typeCounts = { Image: 0, Video: 0, Sidecar: 0 };
+        const typeEngagement = { Image: 0, Video: 0, Sidecar: 0 };
+
+        recentPosts.forEach(post => {
+            const type = post.type;
+            const engagement = post.likesCount + post.commentsCount;
+            if (type in typeCounts) {
+                typeCounts[type]++;
+                typeEngagement[type] += engagement;
+            }
+        });
+
+        const totalPosts = recentPosts.length || 1;
+        const mediaMix = {
+            imagePercent: Math.round((typeCounts.Image / totalPosts) * 100),
+            videoPercent: Math.round((typeCounts.Video / totalPosts) * 100),
+            sidecarPercent: Math.round((typeCounts.Sidecar / totalPosts) * 100),
+        };
+
+        const avgEngagementByType = {
+            image: typeCounts.Image ? Math.round(typeEngagement.Image / typeCounts.Image) : 0,
+            video: typeCounts.Video ? Math.round(typeEngagement.Video / typeCounts.Video) : 0,
+            sidecar: typeCounts.Sidecar ? Math.round(typeEngagement.Sidecar / typeCounts.Sidecar) : 0,
+        };
+
+        // 2. Day of Week & Hour Analysis
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayStats = Array(7).fill(0).map(() => ({ engagement: 0, count: 0 }));
+        const hourStats = Array(24).fill(0).map(() => ({ engagement: 0, count: 0 }));
+
+        recentPosts.forEach(post => {
+            const date = new Date(post.timestamp);
+            const dayIndex = date.getDay();
+            const hourIndex = date.getHours();
+            const engagement = post.likesCount + post.commentsCount;
+
+            dayStats[dayIndex].engagement += engagement;
+            dayStats[dayIndex].count++;
+
+            hourStats[hourIndex].engagement += engagement;
+            hourStats[hourIndex].count++;
+        });
+
+        const dayOfWeekAnalysis = days.map((day, index) => ({
+            day,
+            avgEngagement: dayStats[index].count ? Math.round(dayStats[index].engagement / dayStats[index].count) : 0,
+            postCount: dayStats[index].count
+        })).sort((a, b) => b.avgEngagement - a.avgEngagement);
+
+        const hourAnalysis = hourStats.map((stat, index) => ({
+            hour: index,
+            avgEngagement: stat.count ? Math.round(stat.engagement / stat.count) : 0,
+            postCount: stat.count
+        })).sort((a, b) => b.avgEngagement - a.avgEngagement);
+        // We might want to keep hours sorted by time for a chart, but for "best time" sorting by engagement is good.
+        // Let's settle on returning them sorted by engagement for "insights" but maybe the frontend re-sorts for charts.
+        // I will return sorted by engagement to highlight "Best Time".
+
+        // 3. Top Mentions
+        const mentionCounts: { [key: string]: number } = {};
+        recentPosts.forEach(post => {
+            post.mentions?.forEach(mention => {
+                mentionCounts[mention] = (mentionCounts[mention] || 0) + 1;
+            });
+        });
+        const topMentions = Object.entries(mentionCounts)
+            .map(([mention, count]) => ({ mention, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
         // Update profile with calculated stats
         profile.engagementRate = avgEngagementRate;
         profile.avgLikesPerPost = avgLikesPerPost;
@@ -149,6 +223,11 @@ export async function scrapeInstagramProfile(username: string): Promise<Instagra
                 postingFrequency,
                 topHashtags,
                 engagementTrend,
+                mediaMix,
+                avgEngagementByType,
+                topMentions,
+                dayOfWeekAnalysis,
+                hourAnalysis,
             },
             lastUpdated: new Date().toISOString(),
         };
@@ -242,7 +321,21 @@ export async function scrapeInstagramPost(postUrl: string): Promise<InstagramScr
                     totalViews: post.videoViewsCount || 0,
                     postingFrequency: 'N/A',
                     topHashtags: (post.hashtags || []).map(tag => ({ tag, count: 1 })),
+
                     engagementTrend: [],
+                    mediaMix: {
+                        imagePercent: postData.type === 'Image' ? 100 : 0,
+                        videoPercent: postData.type === 'Video' ? 100 : 0,
+                        sidecarPercent: postData.type === 'Sidecar' ? 100 : 0,
+                    },
+                    avgEngagementByType: {
+                        image: postData.type === 'Image' ? post.likesCount + post.commentsCount : 0,
+                        video: postData.type === 'Video' ? post.likesCount + post.commentsCount : 0,
+                        sidecar: postData.type === 'Sidecar' ? post.likesCount + post.commentsCount : 0,
+                    },
+                    topMentions: (post.mentions || []).map(mention => ({ mention, count: 1 })),
+                    dayOfWeekAnalysis: [],
+                    hourAnalysis: [],
                 },
                 lastUpdated: new Date().toISOString(),
             },

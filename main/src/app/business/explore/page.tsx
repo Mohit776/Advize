@@ -70,6 +70,13 @@ const mockCreators = [
 
 const aspectRatios = ['9:16', '4:5', '16:9', '1:1'];
 
+function getYoutubeId(url: string) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
 function VideoCard({
   video,
   layout,
@@ -122,16 +129,26 @@ function VideoCard({
       onClick={handleClick}
     >
       {/* Video element */}
-      <video
-        ref={videoRef}
-        src={video.videoUrl}
-        poster={video.thumbnailUrl || undefined}
-        className="absolute inset-0 w-full h-full object-cover"
-        muted
-        playsInline
-        loop
-        preload="metadata"
-      />
+      {getYoutubeId(video.videoUrl) ? (
+        isHovering ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${getYoutubeId(video.videoUrl)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${getYoutubeId(video.videoUrl)}`}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          />
+        ) : null
+      ) : (
+        <video
+          ref={videoRef}
+          src={video.videoUrl}
+          poster={video.thumbnailUrl || undefined}
+          className="absolute inset-0 w-full h-full object-cover"
+          muted
+          playsInline
+          loop
+          preload="metadata"
+        />
+      )}
 
       {/* Thumbnail fallback when not hovering */}
       {video.thumbnailUrl && !isHovering && !isPlaying && (
@@ -339,13 +356,22 @@ export default function BusinessExplorePage() {
             {/* Left: Video Player - Takes roughly half height on mobile, full column on desktop */}
             <div className="bg-black relative flex items-center justify-center flex-1 md:flex-auto min-h-[300px] md:min-h-0 bg-zinc-950">
               {selectedVideo && (
-                <video
-                  src={selectedVideo.videoUrl}
-                  className="w-full h-full object-contain"
-                  controls
-                  autoPlay
-                  playsInline
-                />
+                getYoutubeId(selectedVideo.videoUrl) ? (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${getYoutubeId(selectedVideo.videoUrl)}?autoplay=1`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={selectedVideo.videoUrl}
+                    className="w-full h-full object-contain"
+                    controls
+                    autoPlay
+                    playsInline
+                  />
+                )
               )}
             </div>
 

@@ -48,6 +48,19 @@ export interface InstagramAnalytics {
     postingFrequency: string;
     topHashtags: { tag: string; count: number }[];
     engagementTrend: { date: string; engagement: number }[];
+    mediaMix: {
+      imagePercent: number;
+      videoPercent: number;
+      sidecarPercent: number;
+    };
+    avgEngagementByType: {
+      image: number;
+      video: number;
+      sidecar: number;
+    };
+    topMentions: { mention: string; count: number }[];
+    dayOfWeekAnalysis: { day: string; avgEngagement: number; postCount: number }[];
+    hourAnalysis: { hour: number; avgEngagement: number; postCount: number }[];
   };
   lastUpdated: string;
 }

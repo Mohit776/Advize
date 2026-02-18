@@ -24,6 +24,8 @@ export type Campaign = {
   businessId: string;
   brandName: string; // Denormalized
   brandLogo: string; // Denormalized
+  category?: string;
+  contentType?: string;
   creatorIds: string[];
   tryItems?: string[];
 };

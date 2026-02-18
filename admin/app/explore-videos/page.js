@@ -49,13 +49,32 @@ export default function ExploreVideosPage() {
     const [creatorName, setCreatorName] = useState("");
     const [aspectRatio, setAspectRatio] = useState("9:16");
     const [category, setCategory] = useState("");
-    const [videoFile, setVideoFile] = useState(null);
+    // Video is always youtube now
+    const [youtubeUrl, setYoutubeUrl] = useState("");
     const [thumbnailFile, setThumbnailFile] = useState(null);
-    const [videoPreview, setVideoPreview] = useState(null);
     const [thumbnailPreview, setThumbnailPreview] = useState(null);
 
-    const videoInputRef = useRef(null);
     const thumbnailInputRef = useRef(null);
+
+    // Helper to extract YouTube ID
+    const getYoutubeId = (url) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const handleYoutubeUrlChange = (e) => {
+        const url = e.target.value;
+        setYoutubeUrl(url);
+
+        const videoId = getYoutubeId(url);
+        if (videoId) {
+            // Auto-set thumbnail preview if not manually set
+            if (!thumbnailFile) {
+                setThumbnailPreview(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
+            }
+        }
+    };
 
     // Real-time listener for explore videos
     useEffect(() => {
@@ -79,17 +98,7 @@ export default function ExploreVideosPage() {
         return () => unsubscribe();
     }, [db]);
 
-    const handleVideoChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (file.size > 100 * 1024 * 1024) {
-                alert("Video must be under 100MB.");
-                return;
-            }
-            setVideoFile(file);
-            setVideoPreview(URL.createObjectURL(file));
-        }
-    };
+
 
     const handleThumbnailChange = (e) => {
         const file = e.target.files?.[0];
@@ -109,19 +118,28 @@ export default function ExploreVideosPage() {
         setCreatorName("");
         setAspectRatio("9:16");
         setCategory("");
-        setVideoFile(null);
+
+        setYoutubeUrl("");
         setThumbnailFile(null);
-        setVideoPreview(null);
         setThumbnailPreview(null);
         setShowForm(false);
         setUploadProgress("");
-        if (videoInputRef.current) videoInputRef.current.value = "";
         if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
     };
 
     const handleUpload = async () => {
-        if (!videoFile || !title.trim() || !creatorName.trim()) {
-            alert("Please fill in all required fields and select a video.");
+        if (!title.trim() || !creatorName.trim()) {
+            alert("Please fill in all required fields.");
+            return;
+        }
+
+        if (!youtubeUrl) {
+            alert("Please enter a YouTube URL.");
+            return;
+        }
+
+        if (!getYoutubeId(youtubeUrl)) {
+            alert("Please enter a valid YouTube URL.");
             return;
         }
 
@@ -129,20 +147,22 @@ export default function ExploreVideosPage() {
         setUploadProgress("Uploading video...");
 
         try {
-            // 1. Upload video
-            const videoFileName = `explore-videos/admin/${Date.now()}_${videoFile.name}`;
-            const videoStorageRef = ref(storage, videoFileName);
-            const videoSnapshot = await uploadBytes(videoStorageRef, videoFile);
-            const videoUrl = await getDownloadURL(videoSnapshot.ref);
 
-            // 2. Upload thumbnail if provided
-            let thumbnailUrl = "";
+            let finalVideoUrl = youtubeUrl;
+            let finalThumbnailUrl = "";
+
+            // 1. Upload thumbnail if provided, else use YouTube thumb if available
             if (thumbnailFile) {
                 setUploadProgress("Uploading thumbnail...");
                 const thumbFileName = `explore-thumbnails/admin/${Date.now()}_${thumbnailFile.name}`;
                 const thumbStorageRef = ref(storage, thumbFileName);
                 const thumbSnapshot = await uploadBytes(thumbStorageRef, thumbnailFile);
-                thumbnailUrl = await getDownloadURL(thumbSnapshot.ref);
+                finalThumbnailUrl = await getDownloadURL(thumbSnapshot.ref);
+            } else {
+                const videoId = getYoutubeId(youtubeUrl);
+                if (videoId) {
+                    finalThumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+                }
             }
 
             // 3. Save to Firestore
@@ -150,8 +170,9 @@ export default function ExploreVideosPage() {
             await addDoc(collection(db, "exploreVideos"), {
                 title: title.trim(),
                 description: description.trim(),
-                videoUrl,
-                thumbnailUrl,
+                videoUrl: finalVideoUrl,
+                thumbnailUrl: finalThumbnailUrl,
+                videoType: "youtube",
                 creatorName: creatorName.trim(),
                 aspectRatio,
                 category: category || null,
@@ -184,13 +205,14 @@ export default function ExploreVideosPage() {
     const handleDelete = async (video) => {
         try {
             // Delete from storage
-            if (video.videoUrl) {
+            // Only try to delete from storage if it looks like a firebase storage url
+            if (video.videoUrl && video.videoUrl.includes("firebasestorage")) {
                 try {
                     const videoRef = ref(storage, video.videoUrl);
                     await deleteObject(videoRef);
                 } catch (e) { /* may not exist */ }
             }
-            if (video.thumbnailUrl) {
+            if (video.thumbnailUrl && video.thumbnailUrl.includes("firebasestorage")) {
                 try {
                     const thumbRef = ref(storage, video.thumbnailUrl);
                     await deleteObject(thumbRef);
@@ -269,48 +291,28 @@ export default function ExploreVideosPage() {
                                     {/* Video upload area */}
                                     <div>
                                         <label className="block text-sm font-medium mb-2">
-                                            Video File <span className="text-destructive">*</span>
+                                            YouTube Link <span className="text-destructive">*</span>
                                         </label>
-                                        <div
-                                            onClick={() => videoInputRef.current?.click()}
-                                            className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                                        >
-                                            {videoPreview ? (
-                                                <div className="relative aspect-[9/16] max-h-72 mx-auto rounded-lg overflow-hidden bg-black">
-                                                    <video
-                                                        src={videoPreview}
-                                                        className="w-full h-full object-contain"
-                                                        muted
-                                                        playsInline
-                                                    />
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                                        <svg className="w-12 h-12 text-white/80" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M8 5v14l11-7z" />
-                                                        </svg>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="py-4">
-                                                    <svg className="w-12 h-12 mx-auto text-muted-foreground group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-                                                    </svg>
-                                                    <p className="text-sm text-muted-foreground mt-3 font-medium">Click to select a video file</p>
-                                                    <p className="text-xs text-muted-foreground mt-1">MP4, MOV, WEBM — up to 100MB</p>
+
+                                        <div className="space-y-3">
+                                            <input
+                                                type="text"
+                                                value={youtubeUrl}
+                                                onChange={handleYoutubeUrlChange}
+                                                placeholder="Paste YouTube Link here..."
+                                                className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+                                            />
+                                            {youtubeUrl && getYoutubeId(youtubeUrl) && (
+                                                <div className="relative aspect-video rounded-lg overflow-hidden bg-black">
+                                                    <iframe
+                                                        src={`https://www.youtube.com/embed/${getYoutubeId(youtubeUrl)}`}
+                                                        className="w-full h-full"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    ></iframe>
                                                 </div>
                                             )}
                                         </div>
-                                        <input
-                                            ref={videoInputRef}
-                                            type="file"
-                                            accept="video/*"
-                                            className="hidden"
-                                            onChange={handleVideoChange}
-                                        />
-                                        {videoFile && (
-                                            <p className="text-xs text-muted-foreground mt-2">
-                                                ✓ {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)}MB)
-                                            </p>
-                                        )}
                                     </div>
 
                                     {/* Thumbnail upload area */}
@@ -435,7 +437,7 @@ export default function ExploreVideosPage() {
                                     </button>
                                     <button
                                         onClick={handleUpload}
-                                        disabled={isUploading || !videoFile || !title.trim() || !creatorName.trim()}
+                                        disabled={isUploading || (!getYoutubeId(youtubeUrl)) || !title.trim() || !creatorName.trim()}
                                         className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg font-medium text-sm hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isUploading ? (
@@ -451,7 +453,7 @@ export default function ExploreVideosPage() {
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                                                 </svg>
-                                                Upload Video
+                                                Add Link
                                             </>
                                         )}
                                     </button>
@@ -537,8 +539,8 @@ export default function ExploreVideosPage() {
                                                 </span>
                                             )}
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${video.isActive
-                                                    ? "bg-success/10 text-success"
-                                                    : "bg-muted text-muted-foreground"
+                                                ? "bg-success/10 text-success"
+                                                : "bg-muted text-muted-foreground"
                                                 }`}>
                                                 {video.isActive ? "● Active" : "○ Hidden"}
                                             </span>

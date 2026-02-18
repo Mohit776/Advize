@@ -35,7 +35,13 @@ import {
     ResponsiveContainer,
     BarChart,
     Bar,
+    PieChart,
+    Pie,
+    Cell,
+    Legend,
 } from 'recharts';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 interface InstagramAnalyticsCardProps {
     instagramUrl?: string;
@@ -426,6 +432,162 @@ export function InstagramAnalyticsCard({
                                     />
                                 </LineChart>
                             </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {/* Advanced Analytics Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Media Mix */}
+                    {stats.mediaMix && (
+                        <div className="bg-card border rounded-xl p-4 shadow-sm">
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <ImageIcon className="h-4 w-4" />
+                                Content Mix
+                            </h4>
+                            <div className="h-48 text-xs">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: 'Image', value: stats.mediaMix.imagePercent },
+                                                { name: 'Video', value: stats.mediaMix.videoPercent },
+                                                { name: 'Carousel', value: stats.mediaMix.sidecarPercent },
+                                            ].filter(item => item.value > 0)}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={40}
+                                            outerRadius={60}
+                                            fill="#8884d8"
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                        >
+                                            {[
+                                                { name: 'Image', value: stats.mediaMix.imagePercent },
+                                                { name: 'Video', value: stats.mediaMix.videoPercent },
+                                                { name: 'Carousel', value: stats.mediaMix.sidecarPercent },
+                                            ].filter(item => item.value > 0).map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Engagement by Type */}
+                    {stats.avgEngagementByType && (
+                        <div className="bg-card border rounded-xl p-4 shadow-sm">
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4" />
+                                Engagement by Type
+                            </h4>
+                            <div className="h-48 text-xs">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={[
+                                            { name: 'Image', engagement: stats.avgEngagementByType.image },
+                                            { name: 'Video', engagement: stats.avgEngagementByType.video },
+                                            { name: 'Carousel', engagement: stats.avgEngagementByType.sidecar },
+                                        ]}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" width={50} tick={{ fontSize: 10 }} />
+                                        <Tooltip formatter={(value: number) => formatNumber(value)} />
+                                        <Bar dataKey="engagement" fill="#8884d8" radius={[0, 4, 4, 0]}>
+                                            {[
+                                                { name: 'Image', engagement: stats.avgEngagementByType.image },
+                                                { name: 'Video', engagement: stats.avgEngagementByType.video },
+                                                { name: 'Carousel', engagement: stats.avgEngagementByType.sidecar },
+                                            ].map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Best Time to Post (Day) */}
+                    {stats.dayOfWeekAnalysis && stats.dayOfWeekAnalysis.length > 0 && (
+                        <div className="bg-card border rounded-xl p-4 shadow-sm">
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                Best Days to Post
+                            </h4>
+                            <div className="space-y-3">
+                                {stats.dayOfWeekAnalysis.slice(0, 3).map((day, i) => (
+                                    <div key={day.day} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant={i === 0 ? "default" : "secondary"} className="w-6 h-6 flex items-center justify-center p-0 rounded-full">
+                                                {i + 1}
+                                            </Badge>
+                                            <span className="text-sm font-medium">{day.day}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-sm font-bold block">{formatNumber(day.avgEngagement)}</span>
+                                            <span className="text-xs text-muted-foreground">avg. engagement</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Best Time to Post (Hour) */}
+                    {stats.hourAnalysis && stats.hourAnalysis.length > 0 && (
+                        <div className="bg-card border rounded-xl p-4 shadow-sm">
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4" />
+                                Best Hours to Post
+                            </h4>
+                            <div className="space-y-3">
+                                {stats.hourAnalysis.slice(0, 3).map((hour, i) => (
+                                    <div key={hour.hour} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant={i === 0 ? "default" : "secondary"} className="w-6 h-6 flex items-center justify-center p-0 rounded-full">
+                                                {i + 1}
+                                            </Badge>
+                                            <span className="text-sm font-medium">
+                                                {hour.hour === 0 ? '12 AM' : hour.hour < 12 ? `${hour.hour} AM` : hour.hour === 12 ? '12 PM' : `${hour.hour - 12} PM`}
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-sm font-bold block">{formatNumber(hour.avgEngagement)}</span>
+                                            <span className="text-xs text-muted-foreground">avg. engagement</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Top Mentions */}
+                {stats.topMentions && stats.topMentions.length > 0 && (
+                    <div className="mb-6">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Top Mentions
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                            {stats.topMentions.map(({ mention, count }) => (
+                                <Badge
+                                    key={mention}
+                                    variant="outline"
+                                    className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                >
+                                    @{mention}
+                                    <span className="ml-1 text-blue-400">({count})</span>
+                                </Badge>
+                            ))}
                         </div>
                     </div>
                 )}
