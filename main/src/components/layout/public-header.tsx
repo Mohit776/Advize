@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search } from 'lucide-react';
+import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { Logo } from '@/components/logo';
@@ -42,6 +42,32 @@ export function PublicHeader() {
   const firestore = useFirestore();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userLogo, setUserLogo] = useState<string | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  // Capture the install prompt
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    // If already installed in standalone mode, hide the button
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      setIsInstalled(true);
+    }
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -185,6 +211,29 @@ export function PublicHeader() {
         </nav>
 
         <div className="flex flex-1 items-center justify-end space-x-3">
+          {/* Install App button — only shown when PWA is installable */}
+          {!isInstalled && installPrompt && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleInstall}
+              className="hidden sm:flex gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all"
+            >
+              <Download className="h-4 w-4" />
+              Install App
+            </Button>
+          )}
+          {!isInstalled && installPrompt && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleInstall}
+              className="sm:hidden text-primary hover:bg-primary/10 transition-all"
+              title="Install App"
+            >
+              <Download className="h-5 w-5" />
+            </Button>
+          )}
           {isUserLoading ? (
             <div className="h-10 w-24 animate-pulse rounded-lg bg-muted/50" />
           ) : !user ? (

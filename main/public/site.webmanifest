@@ -1,19 +1,75 @@
 {
-    "name": "Advize",
+    "name": "Advize – Creator & Brand Platform",
     "short_name": "Advize",
+    "description": "Connect verified creators with brands for seamless collaborations.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "theme_color": "#0f0f11",
+    "background_color": "#0f0f11",
+    "lang": "en",
+    "categories": [
+        "business",
+        "social",
+        "marketing"
+    ],
     "icons": [
+        {
+            "src": "/favicon-16x16.png",
+            "sizes": "16x16",
+            "type": "image/png",
+            "purpose": "any"
+        },
         {
             "src": "/favicon-32x32.png",
             "sizes": "32x32",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
-            "src": "/favicon.ico",
-            "sizes": "48x48",
-            "type": "image/x-icon"
+            "src": "/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ],
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
-    "display": "standalone"
+    "shortcuts": [
+        {
+            "name": "Browse Campaigns",
+            "short_name": "Campaigns",
+            "description": "Explore active brand campaigns",
+            "url": "/campaigns",
+            "icons": [
+                {
+                    "src": "/android-chrome-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "My Profile",
+            "short_name": "Profile",
+            "description": "View and edit your creator profile",
+            "url": "/creator/profile",
+            "icons": [
+                {
+                    "src": "/android-chrome-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ]
 }

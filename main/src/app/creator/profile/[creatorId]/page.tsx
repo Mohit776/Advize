@@ -17,6 +17,8 @@ import {
   Linkedin,
   Link as LinkIcon,
   CheckCircle,
+  Loader2,
+  MessageCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,9 +35,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { WishlistItem, Campaign, CollaborationRequest, Notification } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { CollaborateModal } from '@/app/creator/profile/_components/collaborate-modal';
 import { CollaborationRequestCard } from '@/app/creator/profile/_components/collaboration-request-card';
@@ -160,10 +162,19 @@ function WishlistFeed({ wishlistItems }: { wishlistItems: WishlistItem[] }) {
   );
 }
 
+function formatNumber(num: number): string {
+  if (!num) return '0';
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toString();
+}
+
 export default function PublicCreatorProfilePage() {
   const { toast } = useToast();
   const { user: currentUser, isUserLoading: isCurrentUserLoading } = useUser();
   const firestore = useFirestore();
+  const [activeTab, setActiveTab] = useState('portfolio');
+  const [isImporting, setIsImporting] = useState(false);
   const params = useParams();
   const creatorId = params.creatorId as string;
 
@@ -220,8 +231,18 @@ export default function PublicCreatorProfilePage() {
     return { Icon: Globe, href: link, name: 'Website' };
   }) || [];
 
-  // Get Instagram URL from platform links
-  const instagramUrl = creatorProfile?.platformLinks?.find((link: string) => link.includes('instagram.com')) || null;
+  // Get all Instagram URLs from platform links
+  const instagramUrls = useMemo(() => {
+    return creatorProfile?.platformLinks?.filter((link: string) => link.includes('instagram.com')) || [];
+  }, [creatorProfile?.platformLinks]);
+
+  // For backward compat: first Instagram URL
+  const instagramUrl = instagramUrls[0] || null;
+
+  // Multi-account analytics: { username: InstagramAnalytics }
+  const instagramAnalyticsMulti = creatorProfile?.instagramAnalyticsMulti || {};
+  const accountUsernames = Object.keys(instagramAnalyticsMulti);
+  const [activeAccountTab, setActiveAccountTab] = useState<string>('');
 
   const isLoading = isCurrentUserLoading || isProfileLoading || isUserDocLoading || (isOwnProfile && (isWishlistLoading || isRequestsLoading || isNotificationsLoading));
 
@@ -230,6 +251,67 @@ export default function PublicCreatorProfilePage() {
       title: 'Feature Coming Soon!',
       description: 'This feature is currently under development.',
     });
+  };
+
+  const handleImportInstagram = async () => {
+    if (!instagramUrls || instagramUrls.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Instagram URLs',
+        description: 'Please add your Instagram URLs to your profile first.',
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    const allAnalytics: Record<string, any> = { ...instagramAnalyticsMulti };
+    let successCount = 0;
+
+    try {
+      for (const url of instagramUrls) {
+        try {
+          const response = await fetch('/api/instagram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, type: 'profile' }),
+          });
+          const result = await response.json();
+          if (result.success && result.data) {
+            const username = result.data.profile?.username || url;
+            allAnalytics[username] = result.data;
+            successCount++;
+          }
+        } catch (err) {
+          console.error('Failed to fetch for', url, err);
+        }
+      }
+
+      if (successCount > 0 && creatorProfileRef && firestore && isOwnProfile) {
+        await updateDoc(creatorProfileRef, {
+          instagramAnalyticsMulti: allAnalytics,
+          // Also keep single-account backward compat
+          instagramAnalytics: Object.values(allAnalytics)[0] || null,
+        });
+        toast({
+          title: 'Instagram Data Imported',
+          description: `Successfully imported analytics for ${successCount} account(s).`,
+        });
+      } else if (successCount === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Import Failed',
+          description: 'Could not fetch data for any account.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to connect to the server.',
+      });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   if (isLoading) {
@@ -361,7 +443,7 @@ export default function PublicCreatorProfilePage() {
               </p>
             </CardContent>
           </Card>
-          <Tabs defaultValue="portfolio">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full h-auto justify-start overflow-x-auto overflow-y-hidden">
               <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
               {isOwnProfile && <TabsTrigger value="wishlist">Wishlist</TabsTrigger>}
@@ -378,25 +460,105 @@ export default function PublicCreatorProfilePage() {
                 </TabsTrigger>
               )}
             </TabsList>
-            <TabsContent value="portfolio" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle>Portfolio</CardTitle>
-                    {isOwnProfile && <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" />Manage Portfolio</Button>}
-                  </div>
-                  <CardDescription>A collection of recent brand collaborations.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">No Portfolio Items</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      This creator hasn't added any portfolio items yet.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+            <TabsContent value="portfolio" className="mt-4 space-y-6">
+              {accountUsernames.length > 0 ? (
+                <>
+                  {/* Account Selector Tabs */}
+                  {accountUsernames.length > 1 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {accountUsernames.map((username) => (
+                        <Button
+                          key={username}
+                          variant={(activeAccountTab === username || (!activeAccountTab && username === accountUsernames[0])) ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setActiveAccountTab(username)}
+                          className="gap-2"
+                        >
+                          <Instagram className="h-4 w-4" />
+                          @{username}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Show analytics for selected account */}
+                  {accountUsernames.map((username) => {
+                    const isActive = activeAccountTab === username || (!activeAccountTab && username === accountUsernames[0]);
+                    if (!isActive) return null;
+                    const accountData = instagramAnalyticsMulti[username];
+                    const accountUrl = instagramUrls.find((u: string) => u.includes(username)) || instagramUrls[0];
+                    return (
+                      <InstagramAnalyticsCard
+                        key={username}
+                        instagramUrl={accountUrl}
+                        cachedData={accountData}
+                        isOwnProfile={isOwnProfile}
+                        onDataUpdate={async (data) => {
+                          if (creatorProfileRef && firestore && isOwnProfile) {
+                            try {
+                              await updateDoc(creatorProfileRef, {
+                                [`instagramAnalyticsMulti.${username}`]: data,
+                              });
+                            } catch (e) {
+                              console.error('Error saving instagram data:', e);
+                            }
+                          }
+                        }}
+                      />
+                    );
+                  })}
+
+                  {/* Import more button */}
+                  {isOwnProfile && (
+                    <div className="flex justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleImportInstagram}
+                        disabled={isImporting}
+                      >
+                        {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
+                        {isImporting ? 'Importing...' : 'Refresh All Accounts'}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Card>
+                  <CardContent>
+                    <div className="text-center py-12">
+
+
+                      {isOwnProfile && (
+                        <div className="mt-8 border-t pt-8">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
+                              <Instagram className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-sm">Import from Instagram</h4>
+                              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
+                                Showcase your Instagram posts as portfolio items to attract brand collaborations.
+                              </p>
+                            </div>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="mt-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 border-0 text-white"
+                              onClick={handleImportInstagram}
+                              disabled={isImporting}
+                            >
+                              {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Instagram className="mr-2 h-4 w-4" />}
+                              {isImporting ? 'Importing...' : 'Import Instagram Data'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
             {isOwnProfile && (
               <>
@@ -494,17 +656,6 @@ export default function PublicCreatorProfilePage() {
                   </Card>
                 </TabsContent>
                 <TabsContent value="analytics" className="mt-4 space-y-6">
-                  {/* Instagram Analytics */}
-                  <InstagramAnalyticsCard
-                    instagramUrl={instagramUrl}
-                    cachedData={creatorProfile?.instagramAnalytics || null}
-                    isOwnProfile={isOwnProfile}
-                    onDataUpdate={(data) => {
-                      // Optionally save to Firestore here
-                      console.log('Instagram data updated:', data);
-                    }}
-                  />
-
                   {/* Campaign Performance - Coming Soon */}
                   <Card>
                     <CardHeader>

@@ -1,11 +1,44 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'Advize',
-  description: 'Connect Brands with Verified Creators',
+  title: {
+    default: 'Advize',
+    template: '%s | Advize',
+  },
+  description: 'Connect verified creators with brands for seamless collaborations.',
+  applicationName: 'Advize',
+  manifest: '/site.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Advize',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: 'website',
+    title: 'Advize – Creator & Brand Platform',
+    description: 'Connect verified creators with brands for seamless collaborations.',
+    siteName: 'Advize',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Advize',
+    description: 'Connect verified creators with brands for seamless collaborations.',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0f0f11',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -24,6 +57,25 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
+        {/* PWA: iOS full-screen support */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Advize" />
+        {/* Register Service Worker */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.log('SW registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className="font-body bg-background antialiased">
         <FirebaseClientProvider>

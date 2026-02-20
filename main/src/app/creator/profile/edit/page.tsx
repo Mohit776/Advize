@@ -34,7 +34,7 @@ const profileFormSchema = z.object({
   bio: z.string().max(300, 'Bio is too long').optional(),
   location: z.string().optional(),
   categories: z.array(z.string()).optional(),
-  instagramUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
+  instagramUrls: z.array(z.string().url('Please enter a valid URL')).optional(),
   youtubeUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
   twitterUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
 });
@@ -71,7 +71,7 @@ export default function EditCreatorProfilePage() {
       bio: '',
       location: '',
       categories: [],
-      instagramUrl: '',
+      instagramUrls: [],
       youtubeUrl: '',
       twitterUrl: '',
     },
@@ -81,6 +81,8 @@ export default function EditCreatorProfilePage() {
   const [categoryInput, setCategoryInput] = useState('');
   const categories = form.watch('categories') || [];
   const [isInitialSetup, setIsInitialSetup] = useState(false);
+  const [instaInput, setInstaInput] = useState('');
+  const instagramUrls = form.watch('instagramUrls') || [];
 
   useEffect(() => {
     if (creatorProfileData && !creatorProfileData.bio && !creatorProfileData.location) {
@@ -145,7 +147,7 @@ export default function EditCreatorProfilePage() {
         bio: creatorProfileData.bio || '',
         location: creatorProfileData.location || '',
         categories: creatorProfileData.categories || [],
-        instagramUrl: platformLinks.find((l: string) => l.includes('instagram.com')) || '',
+        instagramUrls: platformLinks.filter((l: string) => l.includes('instagram.com')),
         youtubeUrl: platformLinks.find((l: string) => l.includes('youtube.com')) || '',
         twitterUrl: platformLinks.find((l: string) => l.includes('twitter.com') || l.includes('x.com')) || '',
       });
@@ -169,7 +171,7 @@ export default function EditCreatorProfilePage() {
     }, { merge: true });
 
     const profileDocRef = doc(firestore, `users/${user.uid}/creatorProfile`, user.uid);
-    const platformLinks = [data.instagramUrl, data.youtubeUrl, data.twitterUrl].filter(Boolean);
+    const platformLinks = [...(data.instagramUrls || []), data.youtubeUrl, data.twitterUrl].filter(Boolean);
 
     await setDocumentNonBlocking(profileDocRef, {
       bio: data.bio,
@@ -376,13 +378,59 @@ export default function EditCreatorProfilePage() {
             <CardContent className="space-y-4">
               <FormField
                 control={form.control}
-                name="instagramUrl"
-                render={({ field }) => (
+                name="instagramUrls"
+                render={() => (
                   <FormItem>
-                    <FormLabel>Instagram</FormLabel>
+                    <FormLabel>Instagram Accounts</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://instagram.com/your-username" {...field} />
+                      <div className="space-y-3">
+                        {instagramUrls.map((url, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Input value={url} readOnly className="flex-1 bg-muted/50" />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 flex-shrink-0 text-destructive hover:text-destructive"
+                              onClick={() => form.setValue('instagramUrls', instagramUrls.filter((_, i) => i !== index))}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={instaInput}
+                            onChange={e => setInstaInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const trimmed = instaInput.trim();
+                                if (trimmed && trimmed.includes('instagram.com') && !instagramUrls.includes(trimmed)) {
+                                  form.setValue('instagramUrls', [...instagramUrls, trimmed]);
+                                  setInstaInput('');
+                                }
+                              }
+                            }}
+                            placeholder="https://instagram.com/your-username"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const trimmed = instaInput.trim();
+                              if (trimmed && trimmed.includes('instagram.com') && !instagramUrls.includes(trimmed)) {
+                                form.setValue('instagramUrls', [...instagramUrls, trimmed]);
+                                setInstaInput('');
+                              }
+                            }}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </div>
                     </FormControl>
+                    <FormDescription>Add all your Instagram profile URLs. Analytics will be fetched for each account.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
