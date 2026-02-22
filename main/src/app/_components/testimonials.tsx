@@ -145,7 +145,7 @@ function ReviewForm({ onSubmitted }: { onSubmitted: () => void }) {
   }
 
   return (
-     <Form {...form}>
+    <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-4"
@@ -234,6 +234,46 @@ function ReviewForm({ onSubmitted }: { onSubmitted: () => void }) {
   );
 }
 
+const REVIEWS_PER_PAGE = 3;
+
+function ReviewsGrid({ reviews }: { reviews: Review[] }) {
+  const [visibleCount, setVisibleCount] = useState(REVIEWS_PER_PAGE);
+  const visibleReviews = reviews.slice(0, visibleCount);
+  const hasMore = visibleCount < reviews.length;
+
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {visibleReviews.map((review) => (
+          <ReviewCard key={review.id} review={review} />
+        ))}
+      </div>
+      {(hasMore || visibleCount > REVIEWS_PER_PAGE) && (
+        <div className="flex items-center justify-center gap-3 mt-8">
+          {hasMore && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setVisibleCount((c) => c + REVIEWS_PER_PAGE)}
+            >
+              Show More ({reviews.length - visibleCount} remaining)
+            </Button>
+          )}
+          {visibleCount > REVIEWS_PER_PAGE && (
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={() => setVisibleCount(REVIEWS_PER_PAGE)}
+            >
+              Show Less
+            </Button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function Testimonials() {
   const firestore = useFirestore();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -249,57 +289,54 @@ export function Testimonials() {
   return (
     <section className="bg-background py-20 md:py-24">
       <div className="container">
-         <div className="text-center max-w-2xl mx-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-6xl mx-auto">
+          <div>
             <h2 className="text-3xl font-bold tracking-tighter font-headline sm:text-4xl">
               Trusted by the Best
             </h2>
-            <p className="mt-4 text-muted-foreground md:text-lg">
+            <p className="mt-2 text-muted-foreground md:text-lg">
               Hear what our partners have to say about their success with Advize.
             </p>
           </div>
-          <div className="mt-12 space-y-4 max-w-4xl mx-auto">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-40 w-full" />
-                <Skeleton className="h-40 w-full" />
-                <Skeleton className="h-40 w-full" />
-              </>
-            ) : reviews && reviews.length > 0 ? (
-              reviews.map((review) => (
-                <ReviewCard key={review.id} review={review} />
-              ))
-            ) : (
-              <div className="flex h-60 items-center justify-center rounded-lg border-2 border-dashed border-border/50 bg-card/20">
-                <div className="text-center">
-                  <p className="font-semibold">No reviews yet.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Be the first to share your experience!
-                  </p>
-                </div>
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" className="shrink-0">+ Add Review</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Share Your Experience</DialogTitle>
+                <DialogDescription>
+                  Loved using Advize? Leave a review and let others know what you think.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="pt-4">
+                <ReviewForm onSubmitted={() => setIsFormOpen(false)} />
               </div>
-            )}
-          </div>
-          <div className="text-center mt-12">
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
-                <Button size="lg">Write a Review</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Share Your Experience</DialogTitle>
-                  <DialogDescription>
-                    Loved using Advize? Leave a review and let others know what you think.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="pt-4">
-                  <ReviewForm onSubmitted={() => setIsFormOpen(false)} />
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="mt-12 max-w-6xl mx-auto">
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          ) : reviews && reviews.length > 0 ? (
+            <ReviewsGrid reviews={reviews} />
+          ) : (
+            <div className="flex h-60 items-center justify-center rounded-lg border-2 border-dashed border-border/50 bg-card/20">
+              <div className="text-center">
+                <p className="font-semibold">No reviews yet.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Be the first to share your experience!
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
-    

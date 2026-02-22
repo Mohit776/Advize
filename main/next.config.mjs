@@ -26,6 +26,31 @@ const nextConfig = {
         port: '',
         pathname: '**',
       },
+      // Instagram CDN domains for Apify-scraped post images
+      {
+        protocol: 'https',
+        hostname: '**.cdninstagram.com',
+        port: '',
+        pathname: '**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.instagram.com',
+        port: '',
+        pathname: '**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'instagram.com',
+        port: '',
+        pathname: '**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.fbcdn.net',
+        port: '',
+        pathname: '**',
+      },
     ],
   },
 };

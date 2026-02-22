@@ -88,6 +88,19 @@ function StatCard({
     );
 }
 
+/**
+ * Routes Instagram CDN URLs through our server-side proxy to bypass
+ * hotlink protection and CORS restrictions on Instagram image URLs.
+ */
+function getProxiedImageUrl(url: string): string {
+    if (!url) return '';
+    // Only proxy Instagram/Facebook CDN URLs
+    if (url.includes('cdninstagram.com') || url.includes('fbcdn.net') || url.includes('instagram.com')) {
+        return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+}
+
 function PostCard({ post }: { post: InstagramPost }) {
     return (
         <a
@@ -97,13 +110,15 @@ function PostCard({ post }: { post: InstagramPost }) {
             className="group relative aspect-square overflow-hidden rounded-lg bg-muted transition-transform hover:scale-[1.02]"
         >
             {post.displayUrl ? (
-                <Image
-                    src={post.displayUrl}
+                <img
+                    src={getProxiedImageUrl(post.displayUrl)}
                     alt={post.caption?.substring(0, 50) || 'Instagram post'}
-                    fill
-                    className="object-cover transition-opacity group-hover:opacity-80"
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    unoptimized
+                    className="absolute inset-0 w-full h-full object-cover transition-opacity group-hover:opacity-80"
+                    loading="lazy"
+                    onError={(e) => {
+                        // If proxy also fails, show gradient fallback
+                        (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                 />
             ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-500 to-purple-500">
@@ -283,6 +298,33 @@ export function InstagramAnalyticsCard({
 
     const { profile, recentPosts, stats } = data;
 
+    // Guard: if cached data is malformed / missing profile, treat as no data
+    if (!profile || !recentPosts || !stats) {
+        return (
+            <Card className="overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500">
+                    <div className="flex items-center gap-3 text-white">
+                        <Instagram className="h-6 w-6" />
+                        <div>
+                            <CardTitle className="text-white">Instagram Analytics</CardTitle>
+                            <CardDescription className="text-white/70">Data incomplete — please refresh</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6 text-center py-8">
+                    <Instagram className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-3 text-sm text-muted-foreground">Analytics data is incomplete. Click Refresh to re-import.</p>
+                    {isOwnProfile && (
+                        <Button onClick={fetchInstagramData} disabled={isLoading} className="mt-4">
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Refresh Data
+                        </Button>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    }
+
     return (
         <Card className="overflow-hidden">
             {/* Header with gradient */}
@@ -318,12 +360,13 @@ export function InstagramAnalyticsCard({
                     <div className="flex items-center gap-4">
                         <div className="relative h-16 w-16 rounded-full overflow-hidden border-2 border-primary bg-gradient-to-br from-pink-500 to-purple-500">
                             {profile.profilePicUrl ? (
-                                <Image
-                                    src={profile.profilePicUrl}
+                                <img
+                                    src={getProxiedImageUrl(profile.profilePicUrl)}
                                     alt={profile.fullName || profile.username}
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
                                 />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
