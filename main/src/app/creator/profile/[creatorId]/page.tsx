@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { WishlistItem, Campaign, CollaborationRequest, Notification } from '@/lib/types';
+import type { WishlistItem, Campaign, CollaborationRequest, Notification, Earning, Submission } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -159,6 +159,210 @@ function WishlistFeed({ wishlistItems }: { wishlistItems: WishlistItem[] }) {
         <CampaignCard key={campaign.id} {...campaign} />
       ))}
     </div>
+  );
+}
+
+function CampaignPortfolio({ userId }: { userId: string }) {
+  const firestore = useFirestore();
+
+  const campaignsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'campaigns'), where('creatorIds', 'array-contains', userId)) : null),
+    [firestore, userId]
+  );
+  const { data: campaigns, isLoading } = useCollection<Campaign>(campaignsQuery);
+
+  // Query earnings to get total views generated
+  const earningsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'earnings'), where('creatorId', '==', userId)) : null),
+    [firestore, userId]
+  );
+  const { data: earnings } = useCollection<Earning>(earningsQuery);
+
+  // Query submissions for engagement count
+  const submissionsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'submissions'), where('creatorId', '==', userId)) : null),
+    [firestore, userId]
+  );
+  const { data: submissions } = useCollection<Submission>(submissionsQuery);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            Campaign Portfolio
+          </CardTitle>
+          <CardDescription>Past brand collaborations and campaigns</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-40 w-full rounded-xl" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!campaigns || campaigns.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            Campaign Portfolio
+          </CardTitle>
+          <CardDescription>Past brand collaborations and campaigns</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Briefcase className="mx-auto h-10 w-10 text-muted-foreground" />
+            <h3 className="mt-3 text-base font-medium">No Campaign History Yet</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Campaigns this creator has participated in will appear here.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const completedCount = campaigns.filter(c => c.status === 'Completed').length;
+  const activeCount = campaigns.filter(c => c.status === 'Active').length;
+  const platformSet = new Set<string>();
+  campaigns.forEach(c => c.platforms?.forEach(p => platformSet.add(p)));
+
+  // Calculate total views from earnings
+  const totalViews = earnings?.reduce((sum, e) => sum + (e.views || 0), 0) || 0;
+
+  // Calculate total engagements (approved submissions count as engagements)
+  const totalEngagements = submissions?.filter(s => s.status === 'approved').length || 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Campaign Portfolio
+            </CardTitle>
+            <CardDescription>Past brand collaborations and campaigns</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/30">
+              {completedCount} Completed
+            </Badge>
+            {activeCount > 0 && (
+              <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30">
+                {activeCount} Active
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-4 text-center">
+            <p className="text-2xl font-bold">{campaigns.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Campaigns</p>
+          </div>
+          <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 p-4 text-center">
+            <p className="text-2xl font-bold">{completedCount}</p>
+            <p className="text-xs text-muted-foreground mt-1">Completed</p>
+          </div>
+          <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-4 text-center">
+            <p className="text-2xl font-bold">{platformSet.size}</p>
+            <p className="text-xs text-muted-foreground mt-1">Platforms</p>
+          </div>
+          <div className="rounded-xl bg-gradient-to-br from-pink-500/10 to-rose-500/10 border border-pink-500/20 p-4 text-center">
+            <p className="text-2xl font-bold">{formatNumber(totalViews)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Views</p>
+          </div>
+          <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-4 text-center">
+            <p className="text-2xl font-bold">{totalEngagements}</p>
+            <p className="text-xs text-muted-foreground mt-1">Engagements</p>
+          </div>
+        </div>
+
+        {/* Campaign Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {campaigns.map((campaign) => {
+            const startDate = campaign.startDate?.toDate ? campaign.startDate.toDate() : (campaign.startDate ? new Date(campaign.startDate) : null);
+            const endDate = campaign.endDate?.toDate ? campaign.endDate.toDate() : (campaign.endDate ? new Date(campaign.endDate) : null);
+
+            return (
+              <div
+                key={campaign.id}
+                className="group relative rounded-xl border bg-card/50 hover:bg-card/80 transition-all p-4 space-y-3"
+              >
+                {/* Brand Header */}
+                <div className="flex items-center gap-3">
+                  {campaign.brandLogo ? (
+                    <Image
+                      src={campaign.brandLogo}
+                      alt={campaign.brandName}
+                      width={36}
+                      height={36}
+                      className="rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                      {campaign.brandName?.charAt(0) || 'B'}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm truncate">{campaign.name}</h4>
+                    <p className="text-xs text-muted-foreground truncate">{campaign.brandName}</p>
+                  </div>
+                  <Badge
+                    variant={campaign.status === 'Completed' ? 'secondary' : 'default'}
+                    className={
+                      campaign.status === 'Completed'
+                        ? 'bg-green-500/10 text-green-500 border-green-500/30'
+                        : campaign.status === 'Active'
+                          ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                          : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
+                    }
+                  >
+                    {campaign.status}
+                  </Badge>
+                </div>
+
+                {/* Category & Content Type */}
+                <div className="flex flex-wrap gap-1.5">
+                  {campaign.category && (
+                    <Badge variant="outline" className="text-xs">{campaign.category}</Badge>
+                  )}
+                  {campaign.contentType && (
+                    <Badge variant="outline" className="text-xs">{campaign.contentType}</Badge>
+                  )}
+                </div>
+
+                {/* Platforms & Date */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    {campaign.platforms?.map(platform => (
+                      <Badge key={platform} variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {platform}
+                      </Badge>
+                    ))}
+                  </div>
+                  {startDate && (
+                    <span>
+                      {startDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                      {endDate && ` – ${endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -461,6 +665,10 @@ export default function PublicCreatorProfilePage() {
               )}
             </TabsList>
             <TabsContent value="portfolio" className="mt-4 space-y-6">
+              {/* Campaign Portfolio */}
+              <CampaignPortfolio userId={userIdToView} />
+
+              {/* Instagram Analytics */}
               {accountUsernames.length > 0 ? (
                 <>
                   {/* Account Selector Tabs */}

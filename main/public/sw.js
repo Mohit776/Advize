@@ -1,4 +1,4 @@
-const CACHE_NAME = 'advize-v1';
+const CACHE_NAME = 'advize-v2';
 
 // App shell — pages and assets to pre-cache on install
 const APP_SHELL = [
