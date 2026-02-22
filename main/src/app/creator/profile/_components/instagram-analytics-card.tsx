@@ -74,15 +74,15 @@ function StatCard({
     gradient: string;
 }) {
     return (
-        <div className={`relative overflow-hidden rounded-xl p-4 ${gradient}`}>
+        <div className={`relative overflow-hidden rounded-xl p-2 sm:p-3 md:p-4 ${gradient}`}>
             <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
             <div className="relative">
-                <div className="flex items-center gap-2 text-white/80">
-                    <Icon className="h-4 w-4" />
-                    <span className="text-sm font-medium">{label}</span>
+                <div className="flex items-center gap-1 text-white/80">
+                    <Icon className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-xs font-medium leading-tight line-clamp-1">{label}</span>
                 </div>
-                <p className="mt-2 text-2xl font-bold text-white">{value}</p>
-                {subValue && <p className="text-xs text-white/70 mt-1">{subValue}</p>}
+                <p className="mt-1 text-base sm:text-xl md:text-2xl font-bold text-white leading-tight">{value}</p>
+                {subValue && <p className="text-[10px] sm:text-xs text-white/70 mt-0.5">{subValue}</p>}
             </div>
         </div>
     );
@@ -354,11 +354,11 @@ export function InstagramAnalyticsCard({
                 </div>
             </CardHeader>
 
-            <CardContent className="p-6 -mt-16">
+            <CardContent className="p-3 sm:p-6 -mt-16">
                 {/* Profile Card */}
-                <div className="bg-card rounded-xl border shadow-lg p-4 mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="relative h-16 w-16 rounded-full overflow-hidden border-2 border-primary bg-gradient-to-br from-pink-500 to-purple-500">
+                <div className="bg-card rounded-xl border shadow-lg p-3 sm:p-4 mb-6">
+                    <div className="flex items-start gap-3">
+                        <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-full overflow-hidden border-2 border-primary bg-gradient-to-br from-pink-500 to-purple-500 flex-shrink-0">
                             {profile.profilePicUrl ? (
                                 <img
                                     src={getProxiedImageUrl(profile.profilePicUrl)}
@@ -375,15 +375,15 @@ export function InstagramAnalyticsCard({
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-lg truncate">@{profile.username}</h3>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="font-bold text-base sm:text-lg truncate">@{profile.username}</h3>
                                 {profile.isVerified && (
-                                    <CheckCircle className="h-5 w-5 text-primary fill-primary" />
+                                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary fill-primary flex-shrink-0" />
                                 )}
                             </div>
-                            <p className="text-sm text-muted-foreground truncate">{profile.fullName}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">{profile.fullName}</p>
                             {profile.businessCategoryName && (
-                                <Badge variant="secondary" className="mt-1">{profile.businessCategoryName}</Badge>
+                                <Badge variant="secondary" className="mt-1 text-xs">{profile.businessCategoryName}</Badge>
                             )}
                         </div>
                         <a
@@ -392,31 +392,31 @@ export function InstagramAnalyticsCard({
                             rel="noopener noreferrer"
                             className="flex-shrink-0"
                         >
-                            <Button variant="outline" size="sm">
-                                <ExternalLink className="h-4 w-4" />
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                                <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
                         </a>
                     </div>
 
                     {/* Quick Stats Row */}
-                    <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
+                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t">
                         <div className="text-center">
-                            <p className="text-2xl font-bold">{formatNumber(profile.postsCount)}</p>
+                            <p className="text-lg sm:text-2xl font-bold">{formatNumber(profile.postsCount)}</p>
                             <p className="text-xs text-muted-foreground">Posts</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-2xl font-bold">{formatNumber(profile.followersCount)}</p>
+                            <p className="text-lg sm:text-2xl font-bold">{formatNumber(profile.followersCount)}</p>
                             <p className="text-xs text-muted-foreground">Followers</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-2xl font-bold">{formatNumber(profile.followingCount)}</p>
+                            <p className="text-lg sm:text-2xl font-bold">{formatNumber(profile.followingCount)}</p>
                             <p className="text-xs text-muted-foreground">Following</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Performance Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                {/* Performance Stats Grid - always 1 row */}
+                <div className="grid grid-cols-4 gap-2 mb-6">
                     <StatCard
                         icon={TrendingUp}
                         label="Engagement Rate"
@@ -452,16 +452,16 @@ export function InstagramAnalyticsCard({
                             <BarChart3 className="h-4 w-4" />
                             Engagement Trend
                         </h4>
-                        <div className="h-48 bg-muted/30 rounded-lg p-4">
+                        <div className="h-40 sm:h-48 bg-muted/30 rounded-lg p-2 sm:p-4">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={stats.engagementTrend}>
+                                <LineChart data={stats.engagementTrend} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
                                     <XAxis
                                         dataKey="date"
-                                        tick={{ fontSize: 10 }}
+                                        tick={{ fontSize: 9 }}
                                         tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                     />
-                                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(value) => formatNumber(value)} />
+                                    <YAxis tick={{ fontSize: 9 }} tickFormatter={(value) => formatNumber(value)} width={35} />
                                     <Tooltip
                                         formatter={(value: number) => [formatNumber(value), 'Engagement']}
                                         labelFormatter={(label) => new Date(label).toLocaleDateString()}
@@ -471,7 +471,7 @@ export function InstagramAnalyticsCard({
                                         dataKey="engagement"
                                         stroke="hsl(var(--primary))"
                                         strokeWidth={2}
-                                        dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                                        dot={{ fill: 'hsl(var(--primary))', r: 3 }}
                                     />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -537,7 +537,7 @@ export function InstagramAnalyticsCard({
                                             { name: 'Carousel', engagement: stats.avgEngagementByType.sidecar },
                                         ]}
                                         layout="vertical"
-                                        margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                        margin={{ top: 5, right: 10, left: 45, bottom: 5 }}
                                     >
                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                         <XAxis type="number" hide />
@@ -664,7 +664,7 @@ export function InstagramAnalyticsCard({
                             <ImageIcon className="h-4 w-4" />
                             Recent Posts
                         </h4>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-1 sm:gap-2">
                             {recentPosts.slice(0, 9).map((post) => (
                                 <PostCard key={post.id} post={post} />
                             ))}
