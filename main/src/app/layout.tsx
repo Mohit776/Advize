@@ -6,30 +6,84 @@ import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Advize',
+    default: 'Advize – Connect Creators with Brands',
     template: '%s | Advize',
   },
-  description: 'Connect verified creators with brands for seamless collaborations.',
+  description:
+    'Advize is the premier platform connecting verified content creators with brands for seamless, transparent, and result-driven influencer marketing collaborations.',
+  keywords: [
+    'influencer marketing',
+    'creator platform',
+    'brand collaborations',
+    'content creators',
+    'influencer campaigns',
+    'creator monetization',
+    'brand deals',
+    'Instagram influencers',
+    'YouTube creators',
+    'Advize',
+  ],
   applicationName: 'Advize',
+  authors: [{ name: 'Advize', url: 'https://advize.in' }],
+  creator: 'Advize',
+  publisher: 'Advize',
   manifest: '/site.webmanifest',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: 'https://advize.in',
+  },
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+    other: [
+      { rel: 'android-chrome-192x192', url: '/android-chrome-192x192.png' },
+      { rel: 'android-chrome-512x512', url: '/android-chrome-512x512.png' },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Advize',
   },
-  formatDetection: {
-    telephone: false,
-  },
+  formatDetection: { telephone: false },
   openGraph: {
     type: 'website',
-    title: 'Advize – Creator & Brand Platform',
-    description: 'Connect verified creators with brands for seamless collaborations.',
+    url: 'https://advize.in',
+    title: 'Advize – Connect Creators with Brands',
+    description:
+      'Advize connects verified content creators with top brands for seamless influencer marketing campaigns. Grow your reach and revenue with Advize.',
     siteName: 'Advize',
+    images: [
+      {
+        url: '/android-chrome-512x512.png',
+        width: 512,
+        height: 512,
+        alt: 'Advize – Creator & Brand Collaboration Platform',
+      },
+    ],
+    locale: 'en_IN',
   },
   twitter: {
-    card: 'summary',
-    title: 'Advize',
-    description: 'Connect verified creators with brands for seamless collaborations.',
+    card: 'summary_large_image',
+    title: 'Advize – Connect Creators with Brands',
+    description:
+      'The premier platform for influencer marketing — connect verified creators with brands for seamless collaborations.',
+    images: ['/android-chrome-512x512.png'],
+    creator: '@advize',
   },
 };
 
