@@ -31,15 +31,15 @@ const participants = [
 
 export function Ecosystem() {
   return (
-    <section id="ecosystem" className="py-20 md:py-24 bg-card/50">
-      <div className="container">
+    <section id="ecosystem" className="py-12 md:py-24 bg-card/50">
+      <div className="container px-4 sm:px-6">
         <div className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">The Ecosystem – “One Platform. Five Participants.”</h2>
           <p className="mt-4 text-muted-foreground md:text-lg">
             Our interconnected platform ensures a seamless and trustworthy experience for everyone involved.
           </p>
         </div>
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-12 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 px-4 sm:px-0">
           {participants.map((participant) => (
             <Card key={participant.title} className="text-center bg-transparent border-border/50 shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-2">
               <CardHeader>

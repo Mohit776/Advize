@@ -287,8 +287,8 @@ export function Testimonials() {
 
 
   return (
-    <section className="bg-background py-20 md:py-24">
-      <div className="container">
+    <section className="bg-background py-12 md:py-24">
+      <div className="container px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-6xl mx-auto">
           <div>
             <h2 className="text-3xl font-bold tracking-tighter font-headline sm:text-4xl">

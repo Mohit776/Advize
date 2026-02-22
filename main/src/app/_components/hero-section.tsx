@@ -10,7 +10,7 @@ export function HeroSection() {
 
   return (
     <section className="relative bg-background">
-      <div className="container relative z-10 grid md:grid-cols-2 items-center gap-12 py-12 md:py-28">
+      <div className="container relative z-10 grid md:grid-cols-2 items-center gap-8 md:gap-12 py-8 px-4 sm:px-6 md:py-28">
         <div
           aria-hidden="true"
           className="absolute inset-0 -z-10 overflow-hidden"
@@ -18,7 +18,7 @@ export function HeroSection() {
           <div className="absolute left-0 top-0 h-[48rem] w-full bg-[radial-gradient(100%_40%_at_50%_0%,hsl(var(--primary)/0.1),transparent)]"></div>
         </div>
         <div className="max-w-xl text-center md:text-left">
-          <h1 className="text-4xl font-bold tracking-tighter text-foreground font-headline sm:text-5xl md:text-6xl">
+          <h1 className="text-3xl font-bold tracking-tighter text-foreground font-headline sm:text-4xl md:text-5xl lg:text-6xl">
             Connect Brands with Verified Creators
           </h1>
           <p className="mt-6 text-lg text-muted-foreground md:text-xl">

@@ -3,12 +3,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download } from 'lucide-react';
+import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download, LogOut, Megaphone, Home } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useUser, useAuth, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import {
@@ -146,7 +146,7 @@ export function PublicHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-sm">
-      <div className="container flex h-20 max-w-screen-2xl items-center px-6">
+      <div className="container flex h-16 sm:h-20 max-w-screen-2xl items-center px-4 sm:px-6">
         <div className="mr-8 hidden md:flex">
           <Logo />
         </div>
@@ -159,29 +159,132 @@ export function PublicHeader() {
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="pr-0 w-80">
-              <div className="p-6">
+            <SheetContent side="left" className="w-72 flex flex-col p-0">
+              <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+              {/* Header */}
+              <div className="p-5 border-b border-border/40">
                 <Logo />
               </div>
-              <div className="my-4 h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
-              <div className="flex flex-col space-y-1 p-4">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={cn(
-                      'rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200',
-                      'hover:bg-primary/10 hover:text-primary hover:translate-x-1',
-                      pathname === link.href
-                        ? 'bg-primary/10 text-primary font-semibold shadow-sm'
-                        : 'text-foreground/70'
-                    )}
+
+              {/* User badge (logged-in only) */}
+              {user && (
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-muted/20">
+                  <Avatar className="h-9 w-9 border-2 border-border/50">
+                    <AvatarImage src={userLogo ?? user.photoURL ?? ''} alt={user.displayName ?? ''} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                      {user.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon className="h-4 w-4" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{user.displayName || 'User'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Nav links */}
+              <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+                {user ? (
+                  // Logged-in navigation: role-based
+                  userRole === 'creator' ? (
+                    <>
+                      {[
+                        { href: user?.uid ? `/creator/profile/${user.uid}` : '#', label: 'My Profile', icon: UserIcon },
+                        { href: '/campaigns', label: 'Browse Campaigns', icon: Search },
+                        { href: '/creator/messages', label: 'Messages', icon: MessageSquare },
+                        { href: '/creator/wallet', label: 'Wallet', icon: Wallet },
+                        { href: '/settings', label: 'Settings', icon: Settings },
+                      ].map(({ href, label, icon: Icon }) => {
+                        const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+                        return (
+                          <Link
+                            key={href}
+                            href={href}
+                            onClick={() => setIsMenuOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                              isActive ? 'bg-primary/10 text-primary' : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
+                            )}
+                          >
+                            <Icon className={cn('h-5 w-5 flex-shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
+                            {label}
+                            {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                          </Link>
+                        );
+                      })}
+                    </>
+                  ) : userRole === 'business' ? (
+                    <>
+                      {[
+                        { href: '/business/profile', label: 'Profile', icon: UserIcon },
+                        { href: '/business/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                        { href: '/business/campaigns', label: 'My Campaigns', icon: Megaphone },
+                        { href: '/business/explore', label: 'Explore Creators', icon: Search },
+                        { href: '/business/messages', label: 'Messages', icon: MessageSquare },
+                        { href: '/business/wallet', label: 'Wallet', icon: Wallet },
+                        { href: '/settings', label: 'Settings', icon: Settings },
+                      ].map(({ href, label, icon: Icon }) => {
+                        const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+                        return (
+                          <Link
+                            key={href}
+                            href={href}
+                            onClick={() => setIsMenuOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                              isActive ? 'bg-primary/10 text-primary' : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
+                            )}
+                          >
+                            <Icon className={cn('h-5 w-5 flex-shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
+                            {label}
+                            {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                          </Link>
+                        );
+                      })}
+                    </>
+                  ) : null
+                ) : (
+                  // Guest navigation
+                  <>
+                    {navLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsMenuOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                          pathname === link.href
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
+                        )}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                    <div className="pt-4 space-y-2">
+                      <Button asChild className="w-full" onClick={() => setIsMenuOpen(false)}>
+                        <Link href="/signup">Get Started</Link>
+                      </Button>
+                      <Button asChild variant="outline" className="w-full" onClick={() => setIsMenuOpen(false)}>
+                        <Link href="/login">Login</Link>
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </nav>
+
+              {/* Sign Out (logged-in only) */}
+              {user && (
+                <div className="border-t border-border/40 p-3">
+                  <button
+                    onClick={() => { setIsMenuOpen(false); handleLogout(); }}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
                   >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
+                    <LogOut className="h-5 w-5" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </SheetContent>
           </Sheet>
           <div className="md:hidden">

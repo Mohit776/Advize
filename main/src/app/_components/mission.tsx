@@ -1,7 +1,7 @@
 export function Mission() {
   return (
-    <section id="mission" className="py-20 md:py-24 bg-background">
-      <div className="container max-w-3xl mx-auto">
+    <section id="mission" className="py-12 md:py-24 bg-background">
+      <div className="container max-w-3xl mx-auto px-4 sm:px-6">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">
             The Mission – “Why Adviz Exists”

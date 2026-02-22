@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 export function PublicFooter() {
   return (
     <footer className="bg-background border-t border-border/50" id="contact">
-      <div className="container py-12">
+      <div className="container py-8 md:py-12 px-4 sm:px-6">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
           <div className="space-y-4 md:col-span-4">
             <Logo />
@@ -31,7 +31,7 @@ export function PublicFooter() {
                 <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms of Service</Link></li>
               </ul>
             </div>
-             <div className="space-y-4">
+            <div className="space-y-4">
               <h4 className="font-headline font-semibold text-foreground">Connect</h4>
               <ul className="space-y-2">
                 <li><a href="mailto:contact@advize.in" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Mail size={16} /> contact@advize.in</a></li>

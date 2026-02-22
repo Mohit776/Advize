@@ -570,6 +570,8 @@ export default function PublicCreatorProfilePage() {
             src={creatorProfile?.bannerUrl || "https://picsum.photos/seed/creator-banner/1200/400"}
             alt="Creator Banner"
             fill
+            priority
+            sizes="100vw"
             style={{ objectFit: 'cover' }}
             data-ai-hint="creator banner"
           />
@@ -581,6 +583,7 @@ export default function PublicCreatorProfilePage() {
                 src={userData?.logoUrl || "https://picsum.photos/seed/creator-avatar/200/200"}
                 alt="Creator Avatar"
                 fill
+                sizes="(max-width: 768px) 112px, 128px"
                 style={{ objectFit: 'cover' }}
                 data-ai-hint="creator portrait"
               />
@@ -898,7 +901,7 @@ export default function PublicCreatorProfilePage() {
                 <a href={`mailto:${userData.email}`} className="hover:underline truncate">{userData.email}</a>
               </div>
               {socialLinks.map(({ Icon, href, name }: { Icon: React.ElementType, href: string, name: string }) => (
-                <div key={name} className="flex items-center gap-3 text-sm">
+                <div key={href} className="flex items-center gap-3 text-sm">
                   <Icon className="h-4 w-4 text-muted-foreground" />
                   <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary truncate">{name}</a>
                 </div>
