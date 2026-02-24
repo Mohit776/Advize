@@ -61,7 +61,7 @@ import { useParams } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, updateDocumentNonBlocking, useUser, addDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { RejectSubmissionModal } from './_components/reject-submission-modal';
 import { useToast } from '@/hooks/use-toast';
@@ -118,6 +118,10 @@ export default function CampaignDetailPage() {
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, any>>(new Map());
   const [creatorProfilesLoading, setCreatorProfilesLoading] = useState(false);
 
+  // Scraped Instagram post stats for approved submissions
+  const [scrapedStats, setScrapedStats] = useState<Map<string, { views: number; likes: number; comments: number }>>(new Map());
+  const statsRefreshedRef = useRef(false);
+
   useEffect(() => {
     if (!firestore || creatorIds.length === 0) {
       setCreatorProfiles(new Map());
@@ -155,6 +159,73 @@ export default function CampaignDetailPage() {
     fetchProfiles();
   }, [firestore, creatorIds]);
 
+  // Auto-fetch Instagram stats for approved submissions to update views/engagement
+  useEffect(() => {
+    if (statsRefreshedRef.current || !submissions || !earnings || !firestore) return;
+
+    const approvedSubs = submissions.filter(s => {
+      const postUrl = s.postUrl || s.username;
+      return s.status === 'approved' && postUrl?.includes('instagram.com');
+    });
+
+    if (approvedSubs.length === 0) return;
+
+    // Only auto-scrape if there are earnings with 0 views (not yet scraped)
+    const hasZeroViewEarnings = earnings.some(e => e.views === 0);
+    if (!hasZeroViewEarnings) {
+      // Use existing earnings views as scraped stats
+      const existingMap = new Map<string, { views: number; likes: number; comments: number }>();
+      earnings.forEach(e => {
+        existingMap.set(e.creatorId, { views: e.views, likes: 0, comments: 0 });
+      });
+      setScrapedStats(existingMap);
+      statsRefreshedRef.current = true;
+      return;
+    }
+
+    statsRefreshedRef.current = true;
+
+    const fetchAllStats = async () => {
+      const viewsMap = new Map<string, { views: number; likes: number; comments: number }>();
+
+      await Promise.allSettled(
+        approvedSubs.map(async (sub) => {
+          try {
+            const postUrl = sub.postUrl || sub.username;
+            const res = await fetch('/api/instagram', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: postUrl, type: 'post' }),
+            });
+            const result = await res.json();
+
+            if (result.success && result.data?.recentPosts?.[0]) {
+              const post = result.data.recentPosts[0];
+              const views = post.videoViewsCount || 0;
+              const likes = Math.max(0, post.likesCount || 0);
+              const comments = Math.max(0, post.commentsCount || 0);
+
+              viewsMap.set(sub.creatorId, { views, likes, comments });
+
+              // Persist views to the matching earning doc in Firestore
+              const matchingEarning = earnings.find(e => e.creatorId === sub.creatorId);
+              if (matchingEarning && matchingEarning.views === 0 && views > 0) {
+                const earningRef = doc(firestore, 'earnings', matchingEarning.id);
+                updateDocumentNonBlocking(earningRef, { views });
+              }
+            }
+          } catch (err) {
+            console.error(`Failed to fetch stats for submission:`, err);
+          }
+        })
+      );
+
+      setScrapedStats(viewsMap);
+    };
+
+    fetchAllStats();
+  }, [submissions, earnings, firestore]);
+
   const creatorMap = useMemo(() => {
     if (!creators) return new Map();
     return new Map(creators.map(c => [c.id, c]));
@@ -168,11 +239,34 @@ export default function CampaignDetailPage() {
     if (!campaign || !earnings) return null;
 
     const totalSpend = earnings.reduce((acc, e) => acc + e.amount, 0);
-    const totalViews = earnings.reduce((acc, e) => acc + e.views, 0);
+
+    // Use scraped Instagram stats if available, otherwise fall back to earnings
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+
+    if (scrapedStats.size > 0) {
+      scrapedStats.forEach((stats) => {
+        totalViews += stats.views;
+        totalLikes += stats.likes;
+        totalComments += stats.comments;
+      });
+      // Also include views from earnings not covered by scraped stats
+      earnings.forEach(e => {
+        if (!scrapedStats.has(e.creatorId) && e.views > 0) {
+          totalViews += e.views;
+        }
+      });
+    } else {
+      totalViews = earnings.reduce((acc, e) => acc + e.views, 0);
+    }
+
     const obtainedCPM = totalViews > 0 && campaign.cpmRate ? (totalSpend / totalViews) * 1000 : 0;
 
-    // Engagement needs more data.
-    const engagementRate = 0;
+    // Calculate engagement rate from scraped data
+    const engagementRate = totalViews > 0
+      ? parseFloat(((totalLikes + totalComments) / totalViews * 100).toFixed(2))
+      : 0;
 
     const viewsOverTime = [
       { date: 'Start', views: 0 },
@@ -187,7 +281,7 @@ export default function CampaignDetailPage() {
       engagementRate: engagementRate,
       viewsOverTime: viewsOverTime,
     };
-  }, [campaign, earnings]);
+  }, [campaign, earnings, scrapedStats]);
 
   const isLoading = campaignLoading || earningsLoading || submissionsLoading || (creatorIds.length > 0 && (creatorsLoading || creatorProfilesLoading)) || isUserLoading;
 
@@ -391,8 +485,10 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {creatorIds.length} <span className="text-sm font-normal text-muted-foreground">/ {campaignData.numberOfCreators}</span>
+                {submissions?.filter(s => s.status === 'approved').length ?? 0}{' '}
+                <span className="text-sm font-normal text-muted-foreground">/ {campaignData.numberOfCreators}</span>
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Approved</p>
             </CardContent>
           </Card>
         )}
@@ -480,8 +576,8 @@ export default function CampaignDetailPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <CreatorPost creatorName={sub.creatorName} postUrl={sub.username}>
-                              <button className="text-primary hover:underline truncate">{sub.username}</button>
+                            <CreatorPost creatorName={sub.creatorName} postUrl={sub.postUrl || sub.username}>
+                              <button className="text-primary hover:underline truncate max-w-[250px] block text-left">{sub.postUrl || sub.username}</button>
                             </CreatorPost>
                           </TableCell>
                           <TableCell>

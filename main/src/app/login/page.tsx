@@ -100,11 +100,14 @@ function LoginContent() {
             }, { merge: true });
             router.replace('/business/setup-profile');
           } else { // 'creator'
+            const igUsername = localStorage.getItem('signupInstagram');
             const profileRef = doc(firestore, `users/${user.uid}/creatorProfile`, user.uid);
             await setDocumentNonBlocking(profileRef, {
               id: user.uid,
               userId: user.uid,
+              ...(igUsername ? { platformLinks: [`https://www.instagram.com/${igUsername}/`] } : {}),
             }, { merge: true });
+            localStorage.removeItem('signupInstagram');
             router.replace('/creator/profile/edit');
           }
         }

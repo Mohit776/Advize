@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Star, Briefcase } from 'lucide-react';
+import { Star, Briefcase, Instagram } from 'lucide-react';
+import { FormDescription } from '@/components/ui/form';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { useEffect, useState } from 'react';
@@ -26,6 +27,12 @@ const passwordSchema = z.string().min(8, 'Password must be at least 8 characters
 
 const creatorFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
+  instagramUrl: z.string()
+    .min(1, 'Instagram profile is required.')
+    .refine(
+      (val) => val.startsWith('@') || val.includes('instagram.com') || /^[a-zA-Z0-9._]{1,30}$/.test(val),
+      { message: 'Enter a valid Instagram username (e.g. @yourusername) or profile URL.' }
+    ),
   email: z.string().email('Invalid email address.'),
   password: passwordSchema,
   confirmPassword: passwordSchema,
@@ -63,7 +70,7 @@ function SignupContent() {
 
   const creatorForm = useForm<z.infer<typeof creatorFormSchema>>({
     resolver: zodResolver(creatorFormSchema),
-    defaultValues: { name: '', email: '', password: '', confirmPassword: '', acceptTerms: false },
+    defaultValues: { name: '', instagramUrl: '', email: '', password: '', confirmPassword: '', acceptTerms: false },
   });
 
   const businessForm = useForm<z.infer<typeof businessFormSchema>>({
@@ -86,8 +93,17 @@ function SignupContent() {
       await updateProfile(user, { displayName: values.name });
       await sendEmailVerification(user);
 
-      // Store the intended role for after email verification
+      // Store the intended role and instagram URL for after email verification
       localStorage.setItem('signupRole', 'creator');
+      // Normalise the instagram value: strip leading @, extract username from URL
+      let igValue = values.instagramUrl.trim();
+      if (igValue.includes('instagram.com/')) {
+        const match = igValue.match(/instagram\.com\/([^/?]+)/);
+        igValue = match ? match[1] : igValue;
+      } else {
+        igValue = igValue.replace(/^@/, '');
+      }
+      localStorage.setItem('signupInstagram', igValue);
       router.push(`/auth/verify-email`);
 
     } catch (error: any) {
@@ -184,6 +200,25 @@ function CreatorSignupForm({ form, onSubmit, isLoading }: { form: any; onSubmit:
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
           <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Aisha Sharma" {...field} disabled={isLoading} /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="instagramUrl" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="flex items-center gap-1.5">
+              <Instagram className="h-3.5 w-3.5 text-pink-500" />
+              Instagram Profile <span className="text-destructive ml-0.5">*</span>
+            </FormLabel>
+            <FormControl>
+              <Input
+                placeholder="@yourusername or https://instagram.com/yourusername"
+                {...field}
+                disabled={isLoading}
+              />
+            </FormControl>
+            <FormDescription className="text-xs">
+              Required to apply to campaigns. Enter your username or profile URL.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
           <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="aisha.sharma@example.com" {...field} disabled={isLoading} /></FormControl><FormMessage /></FormItem>
