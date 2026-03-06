@@ -273,18 +273,8 @@ export function PublicHeader() {
                 )}
               </nav>
 
-              {/* Sign Out (logged-in only) */}
-              {user && (
-                <div className="border-t border-border/40 p-3">
-                  <button
-                    onClick={() => { setIsMenuOpen(false); handleLogout(); }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    Sign Out
-                  </button>
-                </div>
-              )}
+          
+           
             </SheetContent>
           </Sheet>
           <div className="md:hidden">

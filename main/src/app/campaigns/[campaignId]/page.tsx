@@ -7,6 +7,7 @@ import {
   Instagram,
   Youtube,
   ChevronRight,
+  CheckCircle2,
   Gem,
   Mic2,
   Tags,
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { doc, serverTimestamp, collection, query, where } from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,8 +43,8 @@ import {
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDoc, useFirestore, useMemoFirebase, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import type { Campaign, CreatorPerformance, WishlistItem } from '@/lib/types';
+import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import type { Campaign, CreatorPerformance, Submission, WishlistItem } from '@/lib/types';
 import { JoinCampaignModal } from './_components/join-campaign-modal';
 import { CreatorPost } from '@/components/shared/creator-post';
 import { cn } from '@/lib/utils';
@@ -79,6 +80,14 @@ export default function CampaignDetailPage() {
   const { data: wishlistItem } = useDoc<WishlistItem>(wishlistItemRef);
 
   const isWishlisted = !!wishlistItem;
+
+  // Check if creator already submitted to this campaign
+  const existingSubmissionQuery = useMemoFirebase(
+    () => (user && campaignId ? query(collection(firestore, 'submissions'), where('campaignId', '==', campaignId), where('creatorId', '==', user.uid)) : null),
+    [user, campaignId, firestore]
+  );
+  const { data: existingSubmissions } = useCollection<Submission>(existingSubmissionQuery);
+  const existingSubmission = existingSubmissions?.[0] ?? null;
 
   const handleWishlistToggle = () => {
     if (!user || !wishlistItemRef) {
@@ -174,14 +183,40 @@ export default function CampaignDetailPage() {
               <Heart className={cn("h-5 w-5", isWishlisted && "fill-red-500 text-red-500")} />
             </Button>
           )}
-          <JoinCampaignModal
-            campaignId={campaign.id}
-            campaignName={campaign.name}
-            visibility={campaign.visibility}
-            businessId={campaign.businessId}
-          >
-            <Button>Join Campaign</Button>
-          </JoinCampaignModal>
+          {existingSubmission ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="gap-2 border-green-500/40 text-green-500 hover:bg-green-500/10 hover:text-green-500"
+                asChild
+              >
+                <Link href={`/creator/campaigns/${campaignId}`}>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Already Joined
+                </Link>
+              </Button>
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'capitalize',
+                  existingSubmission.status === 'approved' && 'bg-green-500/10 text-green-500 border-green-500/20',
+                  existingSubmission.status === 'pending' && 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+                  existingSubmission.status === 'rejected' && 'bg-red-500/10 text-red-500 border-red-500/20',
+                )}
+              >
+                {existingSubmission.status}
+              </Badge>
+            </div>
+          ) : (
+            <JoinCampaignModal
+              campaignId={campaign.id}
+              campaignName={campaign.name}
+              visibility={campaign.visibility}
+              businessId={campaign.businessId}
+            >
+              <Button>Join Campaign</Button>
+            </JoinCampaignModal>
+          )}
         </div>
       </div>
 

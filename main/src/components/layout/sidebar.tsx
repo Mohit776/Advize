@@ -132,17 +132,7 @@ export function Sidebar() {
                     })}
                 </nav>
 
-                {/* Logout */}
-                <div className="flex-shrink-0 p-4 border-t border-border/40 bg-muted/10">
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        onClick={handleSignOut}
-                    >
-                        <LogOut className="h-5 w-5" />
-                        Sign Out
-                    </Button>
-                </div>
+
             </div>
         </aside>
     );

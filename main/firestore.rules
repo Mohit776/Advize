@@ -34,9 +34,12 @@ match /users/{userId}/notifications/{notificationId} {
 
     // SUBMISSIONS: Get/List access controlled by ownership
     match /submissions/{submissionId} {
-       // READ (covers GET and LIST): Allow if user is creator or business owner of the campaign.
-       // This forces client queries to be constrained, e.g., .where('creatorId', '==', auth.uid)
-       allow read: if request.auth.uid == resource.data.creatorId || request.auth.uid == resource.data.businessId;
+       // GET (single doc): Allow if user is creator or business owner of the campaign.
+       allow get: if request.auth.uid == resource.data.creatorId || request.auth.uid == resource.data.businessId;
+
+       // LIST (collection query): Allow if authenticated.
+       // Client must constrain query with .where('creatorId','==',uid) or .where('businessId','==',uid)
+       allow list: if request.auth != null;
 
        // CREATE: Creator must match auth'd user and businessId must be present
        allow create: if request.resource.data.creatorId == request.auth.uid && 'businessId' in request.resource.data;
