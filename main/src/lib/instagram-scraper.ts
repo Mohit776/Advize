@@ -80,7 +80,8 @@ export async function scrapeInstagramProfile(username: string): Promise<Instagra
             timestamp: (post.timestamp || post.takenAtTimestamp) ? new Date((post.takenAtTimestamp ? post.takenAtTimestamp * 1000 : post.timestamp)).toISOString() : new Date().toISOString(),
             likesCount: post.likesCount || 0,
             commentsCount: post.commentsCount || 0,
-            videoViewsCount: post.videoViewCount || post.videoPlayCount,
+            // Prefer total plays from Apify; fall back to unique views when plays are unavailable.
+            videoViewsCount: post.videoPlayCount || post.videoViewCount,
             displayUrl: post.displayUrl || post.imageUrl || '',
             hashtags: post.hashtags || extractHashtags(post.caption || ''),
             mentions: post.mentions || extractMentions(post.caption || ''),
@@ -282,7 +283,8 @@ export async function scrapeInstagramPost(postUrl: string): Promise<InstagramScr
             timestamp: postData.timestamp || new Date().toISOString(),
             likesCount: postData.likesCount || 0,
             commentsCount: postData.commentsCount || 0,
-            videoViewsCount: postData.videoViewCount || postData.videoPlayCount,
+            // Prefer total plays from Apify; fall back to unique views when plays are unavailable.
+            videoViewsCount: postData.videoPlayCount || postData.videoViewCount,
             displayUrl: postData.displayUrl || '',
             hashtags: postData.hashtags || extractHashtags(postData.caption || ''),
             mentions: postData.mentions || extractMentions(postData.caption || ''),

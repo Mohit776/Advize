@@ -34,7 +34,8 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking,
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CampaignPost } from './_components/campaign-post';
-import type { Campaign, Submission } from '@/lib/types';
+import type { Campaign, Earning, Submission, Transaction } from '@/lib/types';
+import { calculateCpm } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,19 +76,55 @@ function BusinessProfileContent() {
   const campaignIds = useMemo(() => rawCampaigns?.map(c => c.id) || [], [rawCampaigns]);
 
   const submissionsQuery = useMemoFirebase(
-    () => (firestore && campaignIds.length > 0 && profileUserId) ? query(collection(firestore, 'submissions'), where('campaignId', 'in', campaignIds), where('businessId', '==', profileUserId)) : null,
-    [firestore, campaignIds, profileUserId]
+    () => profileUserId ? query(collection(firestore, 'submissions'), where('businessId', '==', profileUserId)) : null,
+    [firestore, profileUserId]
   );
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
+  const earningsByBusinessQuery = useMemoFirebase(
+    () => profileUserId ? query(collection(firestore, 'earnings'), where('businessId', '==', profileUserId)) : null,
+    [profileUserId, firestore]
+  );
+  const { data: earningsByBusiness, isLoading: earningsByBusinessLoading } = useCollection<Earning>(earningsByBusinessQuery);
+
+  const earningsByCampaignIdsQuery = useMemoFirebase(
+    () => (firestore && campaignIds.length > 0 && campaignIds.length <= 10)
+      ? query(collection(firestore, 'earnings'), where('campaignId', 'in', campaignIds))
+      : null,
+    [firestore, campaignIds]
+  );
+  const { data: earningsByCampaignIds, isLoading: earningsByCampaignIdsLoading } = useCollection<Earning>(earningsByCampaignIdsQuery);
+
+  const earnings = useMemo(() => {
+    const merged = new Map<string, Earning>();
+    (earningsByBusiness || []).forEach((e) => merged.set(e.id, e));
+    (earningsByCampaignIds || []).forEach((e) => merged.set(e.id, e));
+    return Array.from(merged.values());
+  }, [earningsByBusiness, earningsByCampaignIds]);
+
+  const spendTransactionsQuery = useMemoFirebase(
+    () => profileUserId ? query(collection(firestore, 'transactions'), where('userId', '==', profileUserId)) : null,
+    [profileUserId, firestore]
+  );
+  const { data: spendTransactions, isLoading: spendTransactionsLoading } = useCollection<Transaction>(spendTransactionsQuery);
+
   const campaigns = useMemo(() => {
     if (!rawCampaigns) return [];
+
+    const earningsByCampaign = new Map<string, { views: number; paid: number }>();
+    (earnings || []).forEach((entry) => {
+      const current = earningsByCampaign.get(entry.campaignId) || { views: 0, paid: 0 };
+      current.views += entry.views || 0;
+      current.paid += entry.amount || 0;
+      earningsByCampaign.set(entry.campaignId, current);
+    });
+
     return rawCampaigns.map(c => {
-      // In a real app, this data would be calculated from an earnings/views collection
-      const views = 0;
-      const paid = 0;
-      const progress = 0;
-      const acquiredCpm = undefined;
+      const perf = earningsByCampaign.get(c.id) || { views: 0, paid: 0 };
+      const budget = c.budget ?? 0;
+      const views = perf.views;
+      const progress = budget > 0 ? Math.min((perf.paid / budget) * 100, 100) : 0;
+      const acquiredCpm = calculateCpm(perf.paid, views);
 
       return {
         ...c,
@@ -96,7 +133,7 @@ function BusinessProfileContent() {
         acquiredCpm: acquiredCpm,
       };
     });
-  }, [rawCampaigns]);
+  }, [rawCampaigns, earnings]);
 
   const brandStats = useMemo(() => {
     if (!campaigns || campaigns.length === 0) {
@@ -104,21 +141,37 @@ function BusinessProfileContent() {
         averageCpm: 0,
         totalViews: 0,
         campaignsRun: 0,
+        activeCampaigns: 0,
+        totalPaid: 0,
+        approvalRate: 0,
       };
     }
 
-    const totalCpm = campaigns.reduce((acc, c) => acc + (c.cpmRate ?? 0), 0);
-    const averageCpm = campaigns.length > 0 ? totalCpm / campaigns.length : 0;
+    const spendOnlyTransactions = (spendTransactions || []).filter((t) => t.type === 'spend');
+    const totalPaidFromTransactions = spendOnlyTransactions
+      .filter((t) => t.status === 'completed')
+      .reduce((acc, t) => acc + (t.amount || 0), 0);
+    const totalPaidFromEarnings = (earnings || []).reduce((acc, e) => acc + (e.amount || 0), 0);
+    const totalPaid = totalPaidFromTransactions > 0 ? totalPaidFromTransactions : totalPaidFromEarnings;
     const totalViews = campaigns.reduce((acc, c) => acc + c.views, 0);
+    const averageCpm = calculateCpm(totalPaid, totalViews);
+    const activeCampaigns = campaigns.filter((c) => c.status === 'Active').length;
+    const ownCampaignSubmissions = (submissions || []).filter((s) => campaignIds.includes(s.campaignId));
+    const approvalRate = ownCampaignSubmissions.length > 0
+      ? (ownCampaignSubmissions.filter((s) => s.status === 'approved').length / ownCampaignSubmissions.length) * 100
+      : 0;
 
     return {
       averageCpm: averageCpm,
       totalViews: totalViews,
       campaignsRun: campaigns.length,
+      activeCampaigns,
+      totalPaid,
+      approvalRate,
     };
-  }, [campaigns]);
+  }, [campaigns, earnings, spendTransactions, submissions]);
 
-  const isLoading = isCurrentUserLoading || isProfileLoading || isUserDocLoading || campaignsLoading || submissionsLoading;
+  const isLoading = isCurrentUserLoading || isProfileLoading || isUserDocLoading || campaignsLoading || submissionsLoading || earningsByBusinessLoading || earningsByCampaignIdsLoading || spendTransactionsLoading;
 
   if (isLoading) {
     return (
@@ -271,9 +324,19 @@ function BusinessProfileContent() {
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <p className="text-muted-foreground">Average Rating</p>
+                <p className="text-muted-foreground">Active Campaigns</p>
+                <p className="font-bold">{brandStats.activeCampaigns}</p>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">Total Paid</p>
+                <p className="font-bold">₹{brandStats.totalPaid.toLocaleString('en-IN')}</p>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">Approval Rate</p>
                 <div className="flex items-center gap-1 font-bold">
-                  <Star className="h-4 w-4 text-yellow-400" /> 0.0
+                  <Star className="h-4 w-4 text-yellow-400" /> {brandStats.approvalRate.toFixed(1)}%
                 </div>
               </div>
             </CardContent>

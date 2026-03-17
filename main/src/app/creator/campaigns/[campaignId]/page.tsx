@@ -35,6 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Eye as EyeIcon, Play, ImageIcon, Images } from 'lucide-react';
+import { calculatePayoutFromCpm } from '@/lib/utils';
 
 // Inline preview using the real post data from Apify
 function InlinePostPreview({ postUrl, creatorName }: { postUrl: string; creatorName: string }) {
@@ -240,7 +241,7 @@ export default function CreatorCampaignDetailPage() {
     const cpm = campaign?.cpmRate || 0;
     const maxPay = campaign?.maxPayPerCreator || 0;
 
-    let potentialEarning = (views / 1000) * cpm;
+    let potentialEarning = calculatePayoutFromCpm(views, cpm);
     if (maxPay > 0 && potentialEarning > maxPay) {
       potentialEarning = maxPay;
     }

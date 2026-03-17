@@ -21,7 +21,7 @@ import { ArrowLeft, Plus, Trash2, Calendar as CalendarIcon, Users, Wallet } from
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, addDocumentNonBlocking, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +29,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { useState } from 'react';
 
 const campaignFormSchema = z.object({
   name: z.string().min(5, 'Campaign name must be at least 5 characters.'),
@@ -51,6 +53,14 @@ const campaignFormSchema = z.object({
   tryItems: z.array(
     z.object({
       name: z.string().min(2, { message: 'Item name must be at least 2 characters.' }),
+      productLink: z.union([
+        z.string().url({ message: 'Please enter a valid product URL.' }),
+        z.literal(''),
+      ]).optional(),
+      imageUrl: z.union([
+        z.string().url({ message: 'Please enter a valid image URL.' }),
+        z.literal(''),
+      ]).optional(),
     })
   ).optional(),
   demoContent: z.array(
@@ -86,6 +96,8 @@ export default function NewCampaignPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
+  const [uploadingTryItemIndex, setUploadingTryItemIndex] = useState<number | null>(null);
 
   const userRef = useMemoFirebase(
     () => (user ? doc(firestore, 'users', user.uid) : null),
@@ -123,6 +135,40 @@ export default function NewCampaignPage() {
   const campaignType = form.watch('type');
   const campaignVisibility = form.watch('visibility');
 
+  const handleTryItemImageUpload = async (file: File, index: number) => {
+    if (!user || !storage) {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Please login again and retry the image upload.',
+      });
+      return;
+    }
+
+    try {
+      setUploadingTryItemIndex(index);
+      const safeName = file.name.replace(/\s+/g, '-');
+      const imageRef = ref(storage, `campaign-barter-items/${user.uid}/${Date.now()}-${safeName}`);
+      const snapshot = await uploadBytes(imageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      form.setValue(`tryItems.${index}.imageUrl`, downloadURL, { shouldDirty: true, shouldValidate: true });
+
+      toast({
+        title: 'Image Uploaded',
+        description: 'Barter item image uploaded successfully.',
+      });
+    } catch (error) {
+      console.error('Error uploading barter item image:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Could not upload image. Please try again.',
+      });
+    } finally {
+      setUploadingTryItemIndex(null);
+    }
+  };
+
   async function onSubmit(data: CampaignFormValues) {
     if (!user || !userData || !firestore) {
       toast({ variant: "destructive", title: "Error", description: "You must be logged in to create a campaign." });
@@ -155,6 +201,11 @@ export default function NewCampaignPage() {
       minFollowers: data.minFollowers ?? null,
       maxFollowers: data.maxFollowers ?? null,
       tryItems: data.tryItems?.map(item => item.name) || [],
+      tryItemDetails: (data.tryItems || []).map((item) => ({
+        name: item.name,
+        productLink: item.productLink || null,
+        imageUrl: item.imageUrl || null,
+      })),
       // Dates as Timestamps
       startDate: data.startDate,
       endDate: data.endDate,
@@ -345,38 +396,95 @@ export default function NewCampaignPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Barter Items</CardTitle>
-                <CardDescription>List the products or items you will provide for the barter collaboration.</CardDescription>
+                <CardDescription>List items with product links and image uploads for barter collaboration.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {tryItemFields.map((field, index) => (
-                  <div key={field.id} className="flex items-center gap-2">
+                  <div key={field.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name={`tryItems.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Item Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., T-shirt, Headphones" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`tryItems.${index}.productLink`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Product Link</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://yourstore.com/product/..." {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <FormField
                       control={form.control}
-                      name={`tryItems.${index}.name`}
+                      name={`tryItems.${index}.imageUrl`}
                       render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <Input placeholder={`e.g., T-shirt, Headphones`} {...field} />
-                          </FormControl>
+                        <FormItem>
+                          <FormLabel>Product Image</FormLabel>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const selectedFile = e.target.files?.[0];
+                                if (selectedFile) {
+                                  handleTryItemImageUpload(selectedFile, index);
+                                }
+                              }}
+                              className="max-w-xs"
+                            />
+                            <Input
+                              placeholder="or paste image URL"
+                              {...field}
+                              value={field.value || ''}
+                              className="flex-1 min-w-[220px]"
+                            />
+                          </div>
+                          {field.value ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={field.value} alt="Barter item" className="h-20 w-20 rounded-md object-cover border" />
+                          ) : null}
+                          {uploadingTryItemIndex === index ? (
+                            <FormDescription>Uploading image...</FormDescription>
+                          ) : null}
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeTryItem(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTryItem(index)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remove Item
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => appendTryItem({ name: '' })}
+                  onClick={() => appendTryItem({ name: '', productLink: '', imageUrl: '' })}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Item

@@ -13,8 +13,11 @@ import Link from 'next/link';
 import {
   Area,
   AreaChart,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 import { Button } from '@/components/ui/button';
@@ -26,7 +29,8 @@ import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, where } from 'firebase/firestore';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Campaign } from '@/lib/types';
+import type { Campaign, Earning, Transaction } from '@/lib/types';
+import { calculateCpm } from '@/lib/utils';
 
 export default function BusinessDashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -38,13 +42,52 @@ export default function BusinessDashboardPage() {
   );
   
   const { data: rawCampaigns, isLoading: campaignsLoading } = useCollection<Campaign>(campaignsQuery);
+  const campaignIds = useMemo(() => (rawCampaigns || []).map((c) => c.id), [rawCampaigns]);
+
+  const earningsByBusinessQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'earnings'), where('businessId', '==', user.uid)) : null,
+    [user, firestore]
+  );
+  const { data: earningsByBusiness, isLoading: earningsByBusinessLoading } = useCollection<Earning>(earningsByBusinessQuery);
+
+  const earningsByCampaignIdsQuery = useMemoFirebase(
+    () => (firestore && campaignIds.length > 0 && campaignIds.length <= 10)
+      ? query(collection(firestore, 'earnings'), where('campaignId', 'in', campaignIds))
+      : null,
+    [firestore, campaignIds]
+  );
+  const { data: earningsByCampaignIds, isLoading: earningsByCampaignIdsLoading } = useCollection<Earning>(earningsByCampaignIdsQuery);
+
+  const earnings = useMemo(() => {
+    const merged = new Map<string, Earning>();
+    (earningsByBusiness || []).forEach((e) => merged.set(e.id, e));
+    (earningsByCampaignIds || []).forEach((e) => merged.set(e.id, e));
+    return Array.from(merged.values());
+  }, [earningsByBusiness, earningsByCampaignIds]);
+
+  const spendTransactionsQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'transactions'), where('userId', '==', user.uid)) : null,
+    [user, firestore]
+  );
+  const { data: spendTransactions, isLoading: spendTransactionsLoading } = useCollection<Transaction>(spendTransactionsQuery);
 
   const campaigns = useMemo(() => {
     if (!rawCampaigns) return [];
+
+    const earningsByCampaign = new Map<string, { views: number; paid: number }>();
+    (earnings || []).forEach((entry) => {
+      const current = earningsByCampaign.get(entry.campaignId) || { views: 0, paid: 0 };
+      current.views += entry.views || 0;
+      current.paid += entry.amount || 0;
+      earningsByCampaign.set(entry.campaignId, current);
+    });
+
     return rawCampaigns.map(c => {
-      const views = 0;
-      const progress = 0;
-      const acquiredCpm = undefined;
+      const perf = earningsByCampaign.get(c.id) || { views: 0, paid: 0 };
+      const budget = c.budget ?? 0;
+      const views = perf.views;
+      const progress = budget > 0 ? Math.min((perf.paid / budget) * 100, 100) : 0;
+      const acquiredCpm = calculateCpm(perf.paid, views);
 
       return {
           ...c,
@@ -53,45 +96,109 @@ export default function BusinessDashboardPage() {
           acquiredCpm: acquiredCpm,
       };
     });
-  }, [rawCampaigns]);
+  }, [rawCampaigns, earnings]);
   
   const stats = useMemo(() => {
     if (!campaigns) return { totalCampaigns: 0, totalViews: 0, totalBudget: 0, avgEngagement: 0, avgCpm: 0, totalPaid: 0, totalPending: 0 };
     
     const totalViews = campaigns.reduce((acc, c) => acc + c.views, 0);
     const totalBudget = campaigns.reduce((acc, c) => acc + (c.budget ?? 0), 0);
-    const totalPaid = 0;
+    const spendOnlyTransactions = (spendTransactions || []).filter((t) => t.type === 'spend');
+    const totalPaidFromTransactions = spendOnlyTransactions
+      .filter((t) => t.status === 'completed')
+      .reduce((acc, t) => acc + (t.amount || 0), 0);
+    const totalPending = spendOnlyTransactions
+      .filter((t) => t.status === 'pending')
+      .reduce((acc, t) => acc + (t.amount || 0), 0);
+    const totalPaidFromEarnings = (earnings || []).reduce((acc, e) => acc + (e.amount || 0), 0);
+    const totalPaid = totalPaidFromTransactions > 0 ? totalPaidFromTransactions : totalPaidFromEarnings;
+    const avgCpm = calculateCpm(totalPaid, totalViews);
+    const engagementRates = campaigns
+      .map((c) => Number((c as any).engagementRate))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const avgEngagement = engagementRates.length > 0
+      ? engagementRates.reduce((acc, value) => acc + value, 0) / engagementRates.length
+      : 0;
 
     return {
         totalCampaigns: campaigns.length,
         totalViews: totalViews,
         totalBudget: totalBudget,
-        avgEngagement: 0,
-        avgCpm: 0,
+        avgEngagement: avgEngagement,
+        avgCpm: avgCpm,
         totalPaid: totalPaid,
-        totalPending: 0,
+        totalPending: totalPending,
     };
-  }, [campaigns]);
+  }, [campaigns, earnings, spendTransactions]);
   
   const topCampaignsData = useMemo(() => {
     if (!campaigns) return [];
+
+    const viewsByCampaignByDay = new Map<string, Map<string, number>>();
+    (earnings || []).forEach((entry) => {
+      const timestamp = entry.earnedAt?.seconds
+        ? new Date(entry.earnedAt.seconds * 1000)
+        : (entry.earnedAt ? new Date(entry.earnedAt) : null);
+      if (!timestamp || Number.isNaN(timestamp.getTime())) return;
+
+      const dayKey = timestamp.toISOString().slice(0, 10);
+      const campaignMap = viewsByCampaignByDay.get(entry.campaignId) || new Map<string, number>();
+      campaignMap.set(dayKey, (campaignMap.get(dayKey) || 0) + (entry.views || 0));
+      viewsByCampaignByDay.set(entry.campaignId, campaignMap);
+    });
+
     return campaigns
+      .slice()
       .sort((a, b) => b.views - a.views)
       .slice(0, 4)
-      .map(c => ({ 
-          id: c.id,
-          name: c.name, 
-          views: c.views,
-          performance: [
-              {name: 'W1', views: 0},
-              {name: 'W2', views: 0},
-              {name: 'W3', views: 0},
-              {name: 'W4', views: c.views},
-          ]
-      }));
-  }, [campaigns]);
+      .map((c) => {
+        const byDay = viewsByCampaignByDay.get(c.id) || new Map<string, number>();
+        const sortedDays = Array.from(byDay.keys()).sort();
+        let running = 0;
+        const performanceSeries = sortedDays.map((day) => {
+          running += byDay.get(day) || 0;
+          const label = new Date(day).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+          return { name: label, views: running };
+        });
 
-  const isLoading = isUserLoading || campaignsLoading;
+        return {
+          id: c.id,
+          name: c.name,
+          views: c.views,
+          performance: performanceSeries.length > 0 ? performanceSeries : [{ name: 'Current', views: c.views }],
+        };
+      });
+  }, [campaigns, earnings]);
+
+  const viewsOverTimeData = useMemo(() => {
+    const viewsByDay = new Map<string, number>();
+
+    (earnings || []).forEach((entry) => {
+      const timestamp = entry.earnedAt?.seconds
+        ? new Date(entry.earnedAt.seconds * 1000)
+        : (entry.earnedAt ? new Date(entry.earnedAt) : null);
+      if (!timestamp || Number.isNaN(timestamp.getTime())) return;
+
+      const dayKey = timestamp.toISOString().slice(0, 10);
+      viewsByDay.set(dayKey, (viewsByDay.get(dayKey) || 0) + (entry.views || 0));
+    });
+
+    const sortedDays = Array.from(viewsByDay.keys()).sort();
+    let runningViews = 0;
+
+    return sortedDays.map((day) => {
+      runningViews += viewsByDay.get(day) || 0;
+      return {
+        date: new Date(day).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+        views: runningViews,
+      };
+    });
+  }, [earnings]);
+
+      const isLoading = isUserLoading || campaignsLoading || earningsByBusinessLoading || earningsByCampaignIdsLoading || spendTransactionsLoading;
+
+      const paidProgress = stats.totalBudget > 0 ? (stats.totalPaid / stats.totalBudget) * 100 : 0;
+      const pendingProgress = stats.totalBudget > 0 ? (stats.totalPending / stats.totalBudget) * 100 : 0;
 
   return (
     <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
@@ -195,16 +302,38 @@ export default function BusinessDashboardPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Verified Views Over Time</CardTitle>
-                            <CardDescription>Performance data will be shown here once campaigns are live.</CardDescription>
+                            <CardDescription>Cumulative verified views across your campaigns.</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[300px] flex items-center justify-center">
-                           <div className="text-center">
-                              <Eye className="mx-auto h-12 w-12 text-muted-foreground" />
-                              <h3 className="mt-4 text-lg font-medium">No View Data Yet</h3>
-                              <p className="mt-2 text-sm text-muted-foreground">
-                                View analytics will appear here once creators start posting.
-                              </p>
+                        <CardContent className="h-[300px]">
+                          {viewsOverTimeData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={viewsOverTimeData}>
+                                <defs>
+                                  <linearGradient id="dashboardViewsFill" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
+                                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip
+                                  contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                                />
+                                <Area type="monotone" dataKey="views" stroke="hsl(var(--primary))" fill="url(#dashboardViewsFill)" />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-center">
+                              <div>
+                                <Eye className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="mt-4 text-lg font-medium">No View Data Yet</h3>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                  View analytics will appear here once creators start posting.
+                                </p>
+                              </div>
                             </div>
+                          )}
                         </CardContent>
                     </Card>
                     <Card>
@@ -294,7 +423,7 @@ export default function BusinessDashboardPage() {
                             <h4 className="text-sm font-medium">Total Brand Budget</h4>
                             <span className="font-bold">₹{stats.totalBudget.toLocaleString('en-IN')}</span>
                         </div>
-                        <Progress value={(stats.totalPaid / stats.totalBudget) * 100} />
+                        <Progress value={paidProgress} />
                          <p className="text-xs text-muted-foreground">Total allocated budget for all campaigns.</p>
                     </div>
                      <div className="space-y-2">
@@ -302,7 +431,7 @@ export default function BusinessDashboardPage() {
                             <h4 className="text-sm font-medium">Total Paid to Creators</h4>
                             <span className="font-bold text-green-400">₹{stats.totalPaid.toLocaleString('en-IN')}</span>
                         </div>
-                        <Progress value={(stats.totalPaid / stats.totalBudget) * 100} className="[&>div]:bg-green-500" />
+                        <Progress value={paidProgress} className="[&>div]:bg-green-500" />
                         <p className="text-xs text-muted-foreground">{stats.totalBudget > 0 ? ((stats.totalPaid / stats.totalBudget) * 100).toFixed(1) : 0}% of total budget paid out.</p>
                     </div>
                      <div className="space-y-2">
@@ -310,7 +439,7 @@ export default function BusinessDashboardPage() {
                             <h4 className="text-sm font-medium">Pending Payouts</h4>
                             <span className="font-bold text-orange-400">₹{stats.totalPending.toLocaleString('en-IN')}</span>
                         </div>
-                        <Progress value={(stats.totalPending / stats.totalBudget) * 100} className="[&>div]:bg-orange-500" />
+                        <Progress value={pendingProgress} className="[&>div]:bg-orange-500" />
                         <p className="text-xs text-muted-foreground">{stats.totalBudget > 0 ? ((stats.totalPending / stats.totalBudget) * 100).toFixed(1) : 0}% of total budget pending verification.</p>
                     </div>
                 </CardContent>

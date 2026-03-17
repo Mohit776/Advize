@@ -67,6 +67,7 @@ import { RejectSubmissionModal } from './_components/reject-submission-modal';
 import { useToast } from '@/hooks/use-toast';
 import { CreatorPost } from '@/components/shared/creator-post';
 import { CreatorInstagramStats } from '@/components/shared/creator-instagram-stats';
+import { calculateCpm } from '@/lib/utils';
 
 const platformIcons: { [key: string]: React.ReactNode } = {
   Instagram: <Instagram className="h-5 w-5" />,
@@ -170,19 +171,6 @@ export default function CampaignDetailPage() {
 
     if (approvedSubs.length === 0) return;
 
-    // Only auto-scrape if there are earnings with 0 views (not yet scraped)
-    const hasZeroViewEarnings = earnings.some(e => e.views === 0);
-    if (!hasZeroViewEarnings) {
-      // Use existing earnings views as scraped stats
-      const existingMap = new Map<string, { views: number; likes: number; comments: number }>();
-      earnings.forEach(e => {
-        existingMap.set(e.creatorId, { views: e.views, likes: 0, comments: 0 });
-      });
-      setScrapedStats(existingMap);
-      statsRefreshedRef.current = true;
-      return;
-    }
-
     statsRefreshedRef.current = true;
 
     const fetchAllStats = async () => {
@@ -207,9 +195,9 @@ export default function CampaignDetailPage() {
 
               viewsMap.set(sub.creatorId, { views, likes, comments });
 
-              // Persist views to the matching earning doc in Firestore
+              // Persist latest total views to the matching earning doc in Firestore
               const matchingEarning = earnings.find(e => e.creatorId === sub.creatorId);
-              if (matchingEarning && matchingEarning.views === 0 && views > 0) {
+              if (matchingEarning && views > 0 && matchingEarning.views !== views) {
                 const earningRef = doc(firestore, 'earnings', matchingEarning.id);
                 updateDocumentNonBlocking(earningRef, { views });
               }
@@ -261,7 +249,7 @@ export default function CampaignDetailPage() {
       totalViews = earnings.reduce((acc, e) => acc + e.views, 0);
     }
 
-    const obtainedCPM = totalViews > 0 && campaign.cpmRate ? (totalSpend / totalViews) * 1000 : 0;
+    const obtainedCPM = calculateCpm(totalSpend, totalViews);
 
     // Calculate engagement rate from scraped data
     const engagementRate = totalViews > 0
@@ -313,8 +301,12 @@ export default function CampaignDetailPage() {
         memberIds: arrayUnion(submission.creatorId)
       });
 
-      // Determine the payout amount
-      const payoutAmount = campaign.visibility === 'private' ? campaign.fixedPayPerCreator : campaign.cpmRate; // Simplified for now
+      // Determine the payout amount and enforce Max Pay/Creator cap when configured.
+      const basePayoutAmount = campaign.visibility === 'private' ? campaign.fixedPayPerCreator : campaign.cpmRate; // Simplified for now
+      const maxPayPerCreator = campaign.maxPayPerCreator ?? 0;
+      const payoutAmount = maxPayPerCreator > 0
+        ? Math.min(basePayoutAmount ?? 0, maxPayPerCreator)
+        : (basePayoutAmount ?? 0);
       if (payoutAmount && payoutAmount > 0) {
         // Create earning record for creator
         const earningsCol = collection(firestore, 'earnings');
