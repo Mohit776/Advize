@@ -78,3 +78,6 @@ export const closeExpiredCampaigns = onSchedule(
 		logger.info(`Closed ${closedCount} campaign(s) based on end date.`);
 	}
 );
+
+export {sendOtp} from "./send-otp";
+export {verifyOtp} from "./verify-otp";

@@ -17,7 +17,8 @@ import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { useEffect, useState } from "react";
 import { useAuth, useFirestore, useUser, setDocumentNonBlocking } from '@/firebase';
-import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, sendEmailVerification } from 'firebase/auth';
+import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -46,9 +47,15 @@ function LoginContent() {
     const handleRedirect = async () => {
       if (user && !isUserLoading) {
         if (!user.emailVerified) {
-          await sendEmailVerification(user);
-          await auth.signOut(); // Log the user out immediately after sending the link
-          router.replace('/auth/verify-email'); // Redirect to the verification page
+          try {
+            const functions = getFunctions(undefined, 'us-central1');
+            const sendOtpFn = httpsCallable(functions, 'sendOtp');
+            await sendOtpFn({ uid: user.uid });
+          } catch (e) {
+            // OTP may have been sent recently (rate limit), still redirect
+            console.warn('Could not send OTP:', e);
+          }
+          router.replace('/auth/verify-email');
           return;
         }
 

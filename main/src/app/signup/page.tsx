@@ -18,7 +18,8 @@ import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/firebase';
-import { createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, sendEmailVerification, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -91,7 +92,11 @@ function SignupContent() {
       const user = userCredential.user;
 
       await updateProfile(user, { displayName: values.name });
-      await sendEmailVerification(user);
+
+      // Send OTP email via Cloud Function
+      const functions = getFunctions(undefined, 'us-central1');
+      const sendOtp = httpsCallable(functions, 'sendOtp');
+      await sendOtp({ uid: user.uid });
 
       // Store the intended role and instagram URL for after email verification
       localStorage.setItem('signupRole', 'creator');
@@ -134,7 +139,11 @@ function SignupContent() {
       const user = userCredential.user;
 
       await updateProfile(user, { displayName: values.brandName });
-      await sendEmailVerification(user);
+
+      // Send OTP email via Cloud Function
+      const functions = getFunctions(undefined, 'us-central1');
+      const sendOtp = httpsCallable(functions, 'sendOtp');
+      await sendOtp({ uid: user.uid });
 
       // Store the intended role for after email verification
       localStorage.setItem('signupRole', 'business');

@@ -1,6 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // OTP VERIFICATIONS: Server-only (Cloud Functions use Admin SDK)
+    match /otpVerifications/{uid} {
+      allow read, write: if false;
+    }
   
   
   // EXPLORE VIDEOS
