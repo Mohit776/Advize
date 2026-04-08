@@ -273,8 +273,8 @@ export function PublicHeader() {
                 )}
               </nav>
 
-          
-           
+
+
             </SheetContent>
           </Sheet>
           <div className="md:hidden">
