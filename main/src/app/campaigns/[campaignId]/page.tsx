@@ -46,6 +46,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import type { Campaign, CreatorPerformance, Submission, WishlistItem } from '@/lib/types';
 import { JoinCampaignModal } from './_components/join-campaign-modal';
+import { SubmitContentModal } from './_components/submit-content-modal';
 import { CreatorPost } from '@/components/shared/creator-post';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -185,16 +186,31 @@ export default function CampaignDetailPage() {
           )}
           {existingSubmission ? (
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="gap-2 border-green-500/40 text-green-500 hover:bg-green-500/10 hover:text-green-500"
-                asChild
-              >
-                <Link href={`/creator/campaigns/${campaignId}`}>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Already Joined
-                </Link>
-              </Button>
+              {existingSubmission.status === 'approved' ? (
+                <SubmitContentModal submissionId={existingSubmission.id}>
+                  <Button
+                    variant={existingSubmission.postUrl ? "secondary" : "default"}
+                    className={cn(
+                      "gap-2",
+                      !existingSubmission.postUrl && "bg-green-600 hover:bg-green-700 text-white"
+                    )}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {existingSubmission.postUrl ? 'Submitted' : 'Submit Content'}
+                  </Button>
+                </SubmitContentModal>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="gap-2 border-green-500/40 text-green-500 hover:bg-green-500/10 hover:text-green-500"
+                  asChild
+                >
+                  <Link href={`/creator/campaigns/${campaignId}`}>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Already Joined
+                  </Link>
+                </Button>
+              )}
               <Badge
                 variant="secondary"
                 className={cn(
@@ -272,6 +288,7 @@ export default function CampaignDetailPage() {
                   )}
                 </div>
               ) : null}
+
             </CardContent>
           </Card>
           <Card>
@@ -385,6 +402,45 @@ export default function CampaignDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {campaign.type === 'Barter Collab' && campaign.tryItemDetails && campaign.tryItemDetails.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Tags className="h-5 w-5" /> Barter Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {existingSubmission?.status === 'approved' && campaign.couponCode && (
+                  <div className="bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 p-4 rounded-lg">
+                    <p className="text-sm font-medium mb-2">Use this coupon code on checkout:</p>
+                    <code className="text-xl font-bold bg-background px-3 py-1.5 rounded inline-block border">{campaign.couponCode}</code>
+                  </div>
+                )}
+                {campaign.tryItemDetails.map((item, index) => (
+                  <div key={index} className="flex gap-4 p-4 border rounded-lg bg-muted/20">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="h-16 w-16 object-cover rounded-md border" />
+                    ) : (
+                      <div className="h-16 w-16 bg-muted rounded-md border flex items-center justify-center">
+                        <span className="text-muted-foreground text-xs font-medium">No Image</span>
+                      </div>
+                    )}
+                    <div className="flex flex-col justify-center space-y-1">
+                      <p className="font-medium text-sm sm:text-base">{item.name}</p>
+                      {item.productLink && (
+                        <Button variant="link" size="sm" asChild className="p-0 h-auto justify-start">
+                          <a href={item.productLink} target="_blank" rel="noopener noreferrer">
+                            View Product
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -69,6 +69,7 @@ const campaignFormSchema = z.object({
       description: z.string().min(3, { message: 'Description must be at least 3 characters.' }),
     })
   ).optional(),
+  couponCode: z.string().optional(),
 }).refine((data) => data.endDate > data.startDate, {
   message: "End date must be after start date.",
   path: ["endDate"],
@@ -83,7 +84,13 @@ const campaignFormSchema = z.object({
       return data.fixedPayPerCreator && data.fixedPayPerCreator > 0 && data.numberOfCreators && data.numberOfCreators > 0;
     }
     return true;
-  }, { message: "Fixed Pay and Number of Creators are required for private campaigns.", path: ["fixedPayPerCreator"] });
+  }, { message: "Fixed Pay and Number of Creators are required for private campaigns.", path: ["fixedPayPerCreator"] })
+  .refine((data) => {
+    if (data.type === 'Barter Collab') {
+      return data.couponCode && data.couponCode.trim().length > 0;
+    }
+    return true;
+  }, { message: "Coupon code is required for Barter Collab campaigns.", path: ["couponCode"] });
 
 type CampaignFormValues = z.infer<typeof campaignFormSchema>;
 
@@ -118,6 +125,7 @@ export default function NewCampaignPage() {
       donts: '',
       demoContent: [],
       tryItems: [],
+      couponCode: '',
     },
     mode: 'onChange',
   });
@@ -206,6 +214,7 @@ export default function NewCampaignPage() {
         productLink: item.productLink || null,
         imageUrl: item.imageUrl || null,
       })),
+      couponCode: data.couponCode || null,
       // Dates as Timestamps
       startDate: data.startDate,
       endDate: data.endDate,
@@ -489,6 +498,22 @@ export default function NewCampaignPage() {
                   <Plus className="mr-2 h-4 w-4" />
                   Add Item
                 </Button>
+                <div className="pt-4 border-t mt-4">
+                  <FormField
+                    control={form.control}
+                    name="couponCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Coupon / Discount Code <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., ADVIZE100" {...field} />
+                        </FormControl>
+                        <FormDescription>This code will only be visible to creators after you approve them.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
           )}

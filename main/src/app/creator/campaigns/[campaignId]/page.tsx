@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
+import { SubmitContentModal } from '@/app/campaigns/[campaignId]/_components/submit-content-modal';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -428,7 +429,16 @@ export default function CreatorCampaignDetailPage() {
                       </div>
                     )}
                     <div className="space-y-1">
-                      <h4 className="font-semibold">Post Link</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">Post Link</h4>
+                        {submission.status === 'approved' ? (
+                          <SubmitContentModal submissionId={submission.id}>
+                            <Button variant={submission.postUrl ? "secondary" : "outline"} size="sm" className="h-8">
+                               {submission.postUrl ? 'Submitted' : 'Submit / Update Link'}
+                            </Button>
+                          </SubmitContentModal>
+                        ) : null}
+                      </div>
                       <a href={submission.postUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all flex items-center gap-2">
                         <LinkIcon className="h-4 w-4 flex-shrink-0" /> {submission.postUrl}
                       </a>

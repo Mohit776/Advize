@@ -28,6 +28,12 @@ export type Campaign = {
   contentType?: string;
   creatorIds: string[];
   tryItems?: string[];
+  tryItemDetails?: {
+    name: string;
+    productLink?: string | null;
+    imageUrl?: string | null;
+  }[];
+  couponCode?: string;
 };
 
 export type User = {

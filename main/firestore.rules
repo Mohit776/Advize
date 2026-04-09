@@ -49,8 +49,8 @@ match /users/{userId}/notifications/{notificationId} {
        // CREATE: Creator must match auth'd user and businessId must be present
        allow create: if request.resource.data.creatorId == request.auth.uid && 'businessId' in request.resource.data;
        
-       // UPDATE: Only business owner can update (approve/reject)
-       allow update: if request.auth.uid == resource.data.businessId;
+       // UPDATE: Business owner can update (approve/reject), Creator can update (submit postUrl)
+       allow update: if request.auth.uid == resource.data.businessId || request.auth.uid == resource.data.creatorId;
     }
     
     // REVIEWS: Public read for approved, auth'd write

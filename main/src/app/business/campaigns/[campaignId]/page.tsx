@@ -693,6 +693,39 @@ export default function CampaignDetailPage() {
                   )}
                 </div>
               ) : null}
+
+              {campaignData.type === 'Barter Collab' && campaignData.tryItemDetails && campaignData.tryItemDetails.length > 0 ? (
+                <div className="border-t pt-6 space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-3 text-sm flex items-center gap-2">
+                       <Tags className="h-4 w-4" /> Barter Items
+                    </h4>
+                    <div className="grid gap-3">
+                      {campaignData.tryItemDetails.map((item, index) => (
+                        <div key={index} className="flex gap-3 p-3 border rounded-lg bg-muted/20">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.name} className="h-12 w-12 object-cover rounded-md border" />
+                          ) : (
+                            <div className="h-12 w-12 bg-muted rounded-md border flex items-center justify-center">
+                              <span className="text-muted-foreground text-[10px] font-medium">No Img</span>
+                            </div>
+                          )}
+                          <div className="flex flex-col justify-center space-y-0.5">
+                            <p className="font-medium text-xs">{item.name}</p>
+                            {item.productLink && (
+                              <Button variant="link" size="sm" asChild className="p-0 h-auto justify-start text-[10px]">
+                                <a href={item.productLink} target="_blank" rel="noopener noreferrer">
+                                  View Product
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>

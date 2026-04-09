@@ -36,8 +36,8 @@ const publicSchema = z.object({
 });
 
 const privateSchema = z.object({
-  link: z.string().min(2, 'Please enter your profile username/link.'),
-  username: z.string(), // Same as above
+  link: z.string().optional(),
+  username: z.string().optional(),
 });
 
 
@@ -92,6 +92,34 @@ export function JoinCampaignModal({
     const userDoc = await getDoc(userDocRef);
     const creatorName = userDoc.exists() ? userDoc.data().name : 'Unnamed Creator';
 
+    let submittedLink = values.link;
+
+    if (visibility === 'private') {
+      const profileRef = doc(firestore, `users/${user.uid}/creatorProfile`, user.uid);
+      const profileSnap = await getDoc(profileRef);
+      if (profileSnap.exists()) {
+        const platformLinks: string[] = profileSnap.data().platformLinks || [];
+        const instaLink = platformLinks.find(link => link.includes('instagram.com'));
+        if (instaLink) {
+          submittedLink = instaLink;
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Instagram Profile Missing',
+            description: 'Please add your Instagram profile link in your settings before applying.',
+          });
+          return;
+        }
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Profile Missing',
+          description: 'Creator profile not found. Please set up your profile first.',
+        });
+        return;
+      }
+    }
+
     // 1. Add submission to the 'submissions' collection
     const submissionsColRef = collection(firestore, 'submissions');
     addDocumentNonBlocking(submissionsColRef, {
@@ -99,8 +127,8 @@ export function JoinCampaignModal({
       businessId: businessId, // Required by security rules
       creatorId: user.uid,
       creatorName: creatorName,
-      postUrl: values.link,
-      username: values.link, // Use the same value for simplicity for now
+      postUrl: submittedLink || '',
+      username: submittedLink || '', // Use the same value for simplicity for now
       status: 'pending',
       submittedAt: serverTimestamp(),
     });
@@ -128,20 +156,26 @@ export function JoinCampaignModal({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="link"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{linkLabel}</FormLabel>
-                    <FormControl>
-                      <Input placeholder={linkPlaceholder} {...field} />
-                    </FormControl>
-                    <FormDescription>{linkDescription}</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {visibility === 'public' ? (
+                <FormField
+                  control={form.control}
+                  name="link"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Post Link</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://instagram.com/p/..." {...field} />
+                      </FormControl>
+                      <FormDescription>The direct URL to your video or post.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">
+                  Your Instagram profile link will be automatically shared with the brand when you apply.
+                </div>
+              )}
             </div>
 
             <DialogFooter>
