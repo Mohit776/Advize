@@ -84,13 +84,7 @@ const campaignFormSchema = z.object({
       return data.fixedPayPerCreator && data.fixedPayPerCreator > 0 && data.numberOfCreators && data.numberOfCreators > 0;
     }
     return true;
-  }, { message: "Fixed Pay and Number of Creators are required for private campaigns.", path: ["fixedPayPerCreator"] })
-  .refine((data) => {
-    if (data.type === 'Barter Collab') {
-      return data.couponCode && data.couponCode.trim().length > 0;
-    }
-    return true;
-  }, { message: "Coupon code is required for Barter Collab campaigns.", path: ["couponCode"] });
+  }, { message: "Fixed Pay and Number of Creators are required for private campaigns.", path: ["fixedPayPerCreator"] });
 
 type CampaignFormValues = z.infer<typeof campaignFormSchema>;
 
@@ -504,7 +498,7 @@ export default function NewCampaignPage() {
                     name="couponCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Coupon / Discount Code <span className="text-destructive">*</span></FormLabel>
+                        <FormLabel>Coupon / Discount Code</FormLabel>
                         <FormControl>
                           <Input placeholder="e.g., ADVIZE100" {...field} />
                         </FormControl>
