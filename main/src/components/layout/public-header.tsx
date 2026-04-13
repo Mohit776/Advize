@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download, LogOut, Megaphone, Home } from 'lucide-react';
+import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download, LogOut, Megaphone, Home, Store } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { Logo } from '@/components/logo';
@@ -31,6 +31,8 @@ const navLinks = [
   { href: '/#about', label: 'About' },
   { href: '/#contact', label: 'Contact' },
 ];
+
+const CREATE_STORE_URL = 'https://47dc472e-d2a9-4a9f-873b-bf93c73c62aa-00-2qp3bbsh024bp.kirk.replit.dev/';
 
 export function PublicHeader() {
   const pathname = usePathname();
@@ -113,6 +115,14 @@ export function PublicHeader() {
       }));
   }, [submissions, rawCampaigns, userRole]);
 
+
+  const handleCreateStore = () => {
+    if (user) {
+      sessionStorage.setItem('userId', user.uid);
+      sessionStorage.setItem('owner_id', user.uid);
+    }
+    window.open(CREATE_STORE_URL, '_blank');
+  };
 
   const handleLogout = async () => {
     if (auth) {
@@ -218,13 +228,26 @@ export function PublicHeader() {
                       {[
                         { href: '/business/profile', label: 'Profile', icon: UserIcon },
                         { href: '/business/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                        { href: '#', label: 'Create Store', icon: Store, onClick: handleCreateStore },
                         { href: '/business/campaigns', label: 'My Campaigns', icon: Megaphone },
                         { href: '/business/explore', label: 'Explore Creators', icon: Search },
                         { href: '/business/messages', label: 'Messages', icon: MessageSquare },
                         { href: '/business/wallet', label: 'Wallet', icon: Wallet },
                         { href: '/settings', label: 'Settings', icon: Settings },
-                      ].map(({ href, label, icon: Icon }) => {
-                        const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+                      ].map(({ href, label, icon: Icon, onClick }: { href: string; label: string; icon: React.ElementType; onClick?: () => void }) => {
+                        const isActive = !onClick && (pathname === href || (href !== '/' && pathname.startsWith(href)));
+                        if (onClick) {
+                          return (
+                            <button
+                              key={label}
+                              onClick={() => { onClick(); setIsMenuOpen(false); }}
+                              className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+                            >
+                              <Icon className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                              {label}
+                            </button>
+                          );
+                        }
                         return (
                           <Link
                             key={href}
@@ -427,6 +450,12 @@ export function PublicHeader() {
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span>Dashboard</span>
                       </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {userRole === 'business' && (
+                    <DropdownMenuItem onClick={handleCreateStore} className="cursor-pointer">
+                      <Store className="mr-2 h-4 w-4" />
+                      <span>Create Store</span>
                     </DropdownMenuItem>
                   )}
                   {userRole === 'business' && (

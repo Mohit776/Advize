@@ -14,11 +14,14 @@ import {
     TrendingUp,
     Search,
     Wallet,
+    Store,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
+
+const CREATE_STORE_URL = 'https://47dc472e-d2a9-4a9f-873b-bf93c73c62aa-00-2qp3bbsh024bp.kirk.replit.dev/';
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -42,8 +45,13 @@ export function Sidebar() {
         fetchUserRole();
     }, [user, firestore]);
 
-    const handleSignOut = async () => {
-        await signOut();
+    // Write shared identity to sessionStorage then open the external store builder
+    const handleCreateStore = () => {
+        if (user) {
+            sessionStorage.setItem('userId', user.uid);
+            sessionStorage.setItem('owner_id', user.uid);
+        }
+        window.open(CREATE_STORE_URL, '_blank');
     };
 
     // Business-specific navigation
@@ -108,6 +116,20 @@ export function Sidebar() {
 
                 {/* Navigation */}
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+                    {/* Create Store — special external link with sessionStorage passthrough */}
+                    {userRole === 'business' && (
+                        <button
+                            onClick={handleCreateStore}
+                            className={cn(
+                                'group w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-all duration-200',
+                                'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                            )}
+                        >
+                            <Store className="h-5 w-5 flex-shrink-0 transition-colors text-muted-foreground group-hover:text-foreground" />
+                            Create Store
+                        </button>
+                    )}
+
                     {navigation.map((item) => {
                         const isActive = pathname === item.href ||
                             (item.href !== '/' && pathname.startsWith(item.href));
