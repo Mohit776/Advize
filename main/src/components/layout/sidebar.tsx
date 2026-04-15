@@ -21,7 +21,7 @@ import { useAuth, useUser, useFirestore } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 
-const CREATE_STORE_URL = 'https://47dc472e-d2a9-4a9f-873b-bf93c73c62aa-00-2qp3bbsh024bp.kirk.replit.dev/';
+const CREATE_STORE_URL = 'https://store.advize.in';
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -126,7 +126,7 @@ export function Sidebar() {
                             )}
                         >
                             <Store className="h-5 w-5 flex-shrink-0 transition-colors text-muted-foreground group-hover:text-foreground" />
-                            Create Store
+                            My Store
                         </button>
                     )}
 
