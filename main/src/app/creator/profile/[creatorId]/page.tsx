@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Loader2,
   MessageCircle,
+  Bot,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -37,13 +38,14 @@ import type { WishlistItem, Campaign, CollaborationRequest, Notification, Earnin
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { CollaborateModal } from '@/app/creator/profile/_components/collaborate-modal';
 import { CollaborationRequestCard } from '@/app/creator/profile/_components/collaboration-request-card';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { CampaignCard } from '@/app/campaigns/_components/campaign-card';
 import { InstagramAnalyticsCard } from '@/app/creator/profile/_components/instagram-analytics-card';
+import { AutoDMCard } from '@/app/creator/profile/_components/auto-dm-card';
 
 function MyCampaignsFeed({ userId }: { userId: string }) {
   const firestore = useFirestore();
@@ -384,6 +386,34 @@ export default function PublicCreatorProfilePage() {
 
   const isOwnProfile = currentUser?.uid === creatorId;
   const userIdToView = creatorId;
+  const searchParams = useSearchParams();
+
+  // ── Instagram OAuth callback handler ────────────────────────────────────
+  const [igAuthTrigger, setIgAuthTrigger] = useState(0);
+
+  useEffect(() => {
+    const authResult = searchParams.get('instagram_auth');
+    if (!authResult) return;
+
+    if (authResult === 'success') {
+      toast({ title: 'Instagram Connected! 🎉', description: 'Your account has been authenticated.' });
+      setIgAuthTrigger(n => n + 1);
+    } else if (authResult === 'error') {
+      const reason = searchParams.get('reason') ?? 'Unknown error';
+      toast({
+        variant: 'destructive',
+        title: 'Instagram Connection Failed',
+        description: `Reason: ${reason}. Please try again.`,
+      });
+    }
+
+    // Strip OAuth params from URL without triggering navigation
+    const url = new URL(window.location.href);
+    url.searchParams.delete('instagram_auth');
+    url.searchParams.delete('reason');
+    url.searchParams.delete('tab');
+    window.history.replaceState({}, '', url.pathname);
+  }, [searchParams, toast]);
 
   const creatorProfileRef = useMemoFirebase(
     () => (userIdToView ? doc(firestore, `users/${userIdToView}/creatorProfile`, userIdToView) : null),
@@ -657,6 +687,14 @@ export default function PublicCreatorProfilePage() {
               {isOwnProfile && <TabsTrigger value="my-campaigns">My Campaigns</TabsTrigger>}
               {isOwnProfile && <TabsTrigger value="analytics">Analytics</TabsTrigger>}
               {isOwnProfile && (
+                <TabsTrigger value="auto-dm">
+                  <div className='flex items-center gap-2'>
+                    <Bot className="h-4 w-4" />
+                    Auto DM
+                  </div>
+                </TabsTrigger>
+              )}
+              {isOwnProfile && (
                 <TabsTrigger value="inbox">
                   <div className='flex items-center gap-2'>
                     Inbox
@@ -883,6 +921,9 @@ export default function PublicCreatorProfilePage() {
                       </div>
                     </CardContent>
                   </Card>
+                </TabsContent>
+                <TabsContent value="auto-dm" className="mt-4">
+                  <AutoDMCard creatorId={userIdToView} triggerReload={igAuthTrigger} />
                 </TabsContent>
               </>
             )}

@@ -95,5 +95,33 @@ match /earnings/{earningId} {
     allow update, delete: if request.auth.uid == resource.data.businessId;
 }
 
+// INSTAGRAM AUTO-DM RULES: Owner only
+match /instagram_rules/{ruleId} {
+  // Read/List: authenticated user whose UID matches the rule's creator_id
+  allow read: if request.auth != null && resource.data.creator_id == request.auth.uid;
+
+  // Create: user must be setting creator_id to their own UID
+  allow create: if request.auth != null && request.resource.data.creator_id == request.auth.uid;
+
+  // Update/Delete: owner only
+  allow update, delete: if request.auth != null && resource.data.creator_id == request.auth.uid;
+}
+
+// INSTAGRAM AUTO-DM LOGS: Server writes, owner reads (for analytics)
+match /instagram_dm_logs/{logId} {
+  allow read: if request.auth != null && resource.data.creator_id == request.auth.uid;
+  allow write: if false; // Only written by server-side webhook via Admin SDK
+}
+
+// INSTAGRAM CONNECTED ACCOUNTS: Owner only
+match /instagram_accounts/{uid} {
+  // Only the owner can read/write their own connected account record
+  allow read: if request.auth != null && request.auth.uid == uid;
+  // Write (create/update) is performed server-side via Admin SDK — deny client writes
+  allow write: if false;
+  // Allow delete so the user can disconnect from the client
+  allow delete: if request.auth != null && request.auth.uid == uid;
+}
+
   }
 }
