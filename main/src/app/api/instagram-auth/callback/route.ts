@@ -81,11 +81,13 @@ export async function GET(request: NextRequest) {
 
     let igUsername = `ig_${igUserId}`;
     let igAccountType = 'PERSONAL';
+    let finalIgUserId = String(igUserId);
 
     if (profileRes.ok) {
       const profileData = await profileRes.json();
       igUsername = profileData.username ?? igUsername;
       igAccountType = profileData.account_type ?? igAccountType;
+      if (profileData.id) finalIgUserId = String(profileData.id);
     }
 
     // ── Step 4: Persist to Firestore ─────────────────────────────────────
@@ -97,7 +99,7 @@ export async function GET(request: NextRequest) {
       .doc(uid)
       .set({
         uid,
-        ig_user_id: igUserId,
+        ig_user_id: finalIgUserId,
         username: igUsername,
         account_type: igAccountType,
         access_token: accessToken,

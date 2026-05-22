@@ -94,12 +94,21 @@ async function processIncomingMessage(
   messageText: string
 ) {
   try {
-    // 1. Find the connected account by ig_user_id
-    const accountsSnap = await db
+    // 1. Find the connected account by ig_user_id (String)
+    let accountsSnap = await db
       .collection('instagram_accounts')
       .where('ig_user_id', '==', igUserId)
       .limit(1)
       .get();
+
+    // Fallback: check if it was previously saved as a Number
+    if (accountsSnap.empty) {
+      accountsSnap = await db
+        .collection('instagram_accounts')
+        .where('ig_user_id', '==', Number(igUserId))
+        .limit(1)
+        .get();
+    }
 
     if (accountsSnap.empty) {
       console.log(`[Auto-DM] No connected account found for IG user ${igUserId}`);
