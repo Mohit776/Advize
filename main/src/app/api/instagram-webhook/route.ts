@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
   // We process asynchronously within the same invocation.
   try {
     const body = await request.json();
+    console.log('[Webhook] Received payload:', JSON.stringify(body, null, 2));
 
     // Instagram webhooks have object = 'instagram'
     if (body.object !== 'instagram') {
