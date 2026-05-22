@@ -100,6 +100,9 @@ export async function GET(request: NextRequest) {
       .set({
         uid,
         ig_user_id: finalIgUserId,
+        // The token exchange returns the IGSID which is the ID used in webhooks
+        // This may differ from the app-scoped ID returned by /me
+        ig_user_id_token: String(igUserId),
         username: igUsername,
         account_type: igAccountType,
         access_token: accessToken,

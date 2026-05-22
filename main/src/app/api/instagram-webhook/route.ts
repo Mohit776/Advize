@@ -110,6 +110,16 @@ async function processIncomingMessage(
         .get();
     }
 
+    // Fallback: check ig_user_id_token (IGSID from token exchange)
+    // The webhook uses IGSID which may differ from the app-scoped ID from /me
+    if (accountsSnap.empty) {
+      accountsSnap = await db
+        .collection('instagram_accounts')
+        .where('ig_user_id_token', '==', igUserId)
+        .limit(1)
+        .get();
+    }
+
     if (accountsSnap.empty) {
       console.log(`[Auto-DM] No connected account found for IG user ${igUserId}`);
       return;
