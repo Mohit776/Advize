@@ -136,12 +136,11 @@ async function processIncomingMessage(
       return;
     }
 
-    // 2. Fetch enabled rules for this creator, ordered by creation date (oldest first)
+    // 2. Fetch enabled rules for this creator
     const rulesSnap = await db
       .collection('instagram_rules')
       .where('creator_id', '==', creatorUid)
       .where('enabled', '==', true)
-      .orderBy('created_at', 'asc')
       .get();
 
     if (rulesSnap.empty) {
