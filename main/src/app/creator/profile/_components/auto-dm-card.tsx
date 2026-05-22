@@ -51,7 +51,6 @@ import {
   doc,
   query,
   where,
-  orderBy,
   serverTimestamp,
   getDoc,
 } from 'firebase/firestore';
@@ -332,7 +331,6 @@ function RulesManager({
         ? query(
           collection(firestore, 'instagram_rules'),
           where('creator_id', '==', creatorId),
-          orderBy('created_at', 'asc')
         )
         : null,
     [firestore, creatorId]
