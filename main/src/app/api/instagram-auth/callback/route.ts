@@ -76,18 +76,23 @@ export async function GET(request: NextRequest) {
 
     // ── Step 3: Fetch Instagram profile info ─────────────────────────────
     const profileRes = await fetch(
-      `https://graph.instagram.com/me?fields=id,username,account_type&access_token=${accessToken}`
+      `https://graph.instagram.com/v21.0/me?fields=id,user_id,username,account_type&access_token=${accessToken}`
     );
 
     let igUsername = `ig_${igUserId}`;
     let igAccountType = 'PERSONAL';
     let finalIgUserId = String(igUserId);
+    let appScopedId = String(igUserId);
 
     if (profileRes.ok) {
       const profileData = await profileRes.json();
       igUsername = profileData.username ?? igUsername;
       igAccountType = profileData.account_type ?? igAccountType;
-      if (profileData.id) finalIgUserId = String(profileData.id);
+      if (profileData.id) appScopedId = String(profileData.id);
+      
+      // user_id is the Instagram Professional Account ID which is used in webhooks
+      if (profileData.user_id) finalIgUserId = String(profileData.user_id);
+      else if (profileData.id) finalIgUserId = String(profileData.id);
     }
 
     // ── Step 4: Persist to Firestore ─────────────────────────────────────
@@ -100,6 +105,7 @@ export async function GET(request: NextRequest) {
       .set({
         uid,
         ig_user_id: finalIgUserId,
+        app_scoped_id: appScopedId,
         // The token exchange returns the IGSID which is the ID used in webhooks
         // This may differ from the app-scoped ID returned by /me
         ig_user_id_token: String(igUserId),
