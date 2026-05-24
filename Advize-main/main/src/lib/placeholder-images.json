@@ -1,0 +1,64 @@
+{
+  "placeholderImages": [
+    {
+      "id": "testimonial-creator",
+      "description": "Avatar for a creator testimonial",
+      "imageUrl": "https://images.unsplash.com/photo-1743247299136-e7b5a15db3f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjcmVhdG9yJTIwYXZhdGFyfGVufDB8fHx8MTc2MTc1Mzg0MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "creator avatar"
+    },
+    {
+      "id": "testimonial-brand",
+      "description": "Avatar for a brand testimonial",
+      "imageUrl": "https://images.unsplash.com/photo-1759215524600-f5e5759a289f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxicmFuZCUyMG1hbmFnZXJ8ZW58MHx8fHwxNzYxNzUzODQwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "brand manager"
+    },
+    {
+      "id": "testimonial-marketer",
+      "description": "Avatar for a marketer testimonial",
+      "imageUrl": "https://images.unsplash.com/photo-1749840491274-ac5b0f4dc713?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYXJrZXRlciUyMHBob3RvfGVufDB8fHx8MTc2MTc1Mzg0MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "marketer photo"
+    },
+    {
+      "id": "creator-profile-pic",
+      "description": "Profile picture for a creator",
+      "imageUrl": "https://images.unsplash.com/photo-1612287783441-c63b64e94309?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjcmVhdG9yJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzYyMjgzNDMyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "creator portrait"
+    },
+    {
+      "id": "creator-banner",
+      "description": "Banner image for a creator profile",
+      "imageUrl": "https://images.unsplash.com/photo-1750079521605-9ac6f0edd902?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y3JlYXRvciUyMGJhbm5lcnxlbnwwfHx8fDE3NjIyODM0MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "creator banner"
+    },
+    {
+      "id": "business-logo",
+      "description": "Logo for a business",
+      "imageUrl": "https://images.unsplash.com/photo-1622465911368-72162f8da3e2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjb21wYW55JTIwbG9nb3xlbnwwfHx8fDE3NjE3MzgzOTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "company logo"
+    },
+    {
+      "id": "hero-image",
+      "description": "Hero image for the landing page showing creators and brands collaborating",
+      "imageUrl": "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "collaboration business"
+    },
+    {
+      "id": "how-it-works-launch",
+      "description": "Image for launching a campaign step",
+      "imageUrl": "/how-it-works-launch.jpg",
+      "imageHint": "campaign planning"
+    },
+    {
+      "id": "how-it-works-join",
+      "description": "Image for creators joining a campaign",
+      "imageUrl": "/how-it-works-join.jpg",
+      "imageHint": "creator content"
+    },
+    {
+      "id": "how-it-works-results",
+      "description": "Image for tracking results and performance",
+      "imageUrl": "/how-it-works-results.jpg",
+      "imageHint": "analytics dashboard"
+    }
+  ]
+}
