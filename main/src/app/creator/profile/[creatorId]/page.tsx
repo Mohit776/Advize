@@ -742,6 +742,7 @@ export default function PublicCreatorProfilePage() {
                         instagramUrl={accountUrl}
                         cachedData={accountData}
                         isOwnProfile={isOwnProfile}
+                        creatorId={creatorId}
                         onDataUpdate={async (data) => {
                           if (creatorProfileRef && firestore && isOwnProfile) {
                             try {

@@ -49,6 +49,7 @@ interface InstagramAnalyticsCardProps {
     cachedData?: InstagramAnalytics | null;
     onDataUpdate?: (data: InstagramAnalytics) => void;
     isOwnProfile?: boolean;
+    creatorId?: string;
 }
 
 function formatNumber(num: number): string {
@@ -168,7 +169,8 @@ export function InstagramAnalyticsCard({
     instagramUrl,
     cachedData,
     onDataUpdate,
-    isOwnProfile = false
+    isOwnProfile = false,
+    creatorId
 }: InstagramAnalyticsCardProps) {
     const [data, setData] = useState<InstagramAnalytics | null>(cachedData || null);
     const [isLoading, setIsLoading] = useState(false);
@@ -176,8 +178,10 @@ export function InstagramAnalyticsCard({
     const { toast } = useToast();
 
     const handleShare = async () => {
-        const shareUrl = window.location.href; // Share current creator profile page
-        
+        // Build the public profile URL for sharing (no auth required)
+        const origin = window.location.origin;
+        const shareUrl = creatorId ? `${origin}/profile/${creatorId}` : window.location.href;
+
         try {
             if (navigator.share) {
                 await navigator.share({
