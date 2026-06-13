@@ -21,7 +21,8 @@ import {
     Hash,
     Calendar,
     Loader2,
-    CheckCircle
+    CheckCircle,
+    Share2
 } from 'lucide-react';
 import Image from 'next/image';
 import type { InstagramAnalytics, InstagramPost } from '@/lib/instagram-types';
@@ -173,6 +174,35 @@ export function InstagramAnalyticsCard({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
+
+    const handleShare = async () => {
+        const shareUrl = window.location.href; // Share current creator profile page
+        
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: data?.profile?.fullName || 'Creator Profile',
+                    url: shareUrl
+                });
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                toast({
+                    title: 'Link Copied',
+                    description: 'Profile link copied to clipboard.',
+                });
+            }
+        } catch (err: any) {
+            // Ignore AbortError when user cancels the native share dialog
+            if (err.name !== 'AbortError') {
+                console.error('Error sharing:', err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Failed to share the profile.',
+                });
+            }
+        }
+    };
 
     const fetchInstagramData = async () => {
         if (!instagramUrl) {
@@ -386,16 +416,20 @@ export function InstagramAnalyticsCard({
                                 <Badge variant="secondary" className="mt-1 text-xs">{profile.businessCategoryName}</Badge>
                             )}
                         </div>
-                        <a
-                            href={instagramUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-shrink-0"
-                        >
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                                <ExternalLink className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={handleShare} title="Share Profile">
+                                <Share2 className="h-3.5 w-3.5" />
                             </Button>
-                        </a>
+                            <a
+                                href={instagramUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="View on Instagram">
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                            </a>
+                        </div>
                     </div>
 
                     {/* Quick Stats Row */}
