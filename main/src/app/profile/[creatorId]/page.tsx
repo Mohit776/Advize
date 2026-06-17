@@ -2,13 +2,19 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { PublicProfileView, type PublicProfileData, type PublicCampaign } from '@/app/profile/_components/public-profile-view';
+import { resolveProfileSlug } from '@/lib/username-utils';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://advize.in';
 
 // ── Fetch profile data from Firestore (server-side) ─────────────────────────
 
-async function getPublicProfileData(creatorId: string): Promise<PublicProfileData | null> {
+async function getPublicProfileData(slug: string): Promise<PublicProfileData | null> {
   const db = getAdminFirestore();
+
+  // Resolve the slug: username first, then fall back to raw UID
+  const resolved = await resolveProfileSlug(db, slug);
+  if (!resolved) return null;
+  const creatorId = resolved.uid;
 
   const [userSnap, profileSnap] = await Promise.all([
     db.collection('users').doc(creatorId).get(),
@@ -58,6 +64,7 @@ async function getPublicProfileData(creatorId: string): Promise<PublicProfileDat
 
   return {
     creatorId,
+    username: userData.username || undefined,
     name: userData.name || 'Creator',
     email: userData.email || '',
     logoUrl: userData.logoUrl || undefined,
@@ -98,7 +105,7 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      url: `${APP_URL}/profile/${data.creatorId}`,
+      url: `${APP_URL}/profile/${data.username || data.creatorId}`,
       images: [
         {
           url: imageUrl,

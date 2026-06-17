@@ -21,12 +21,13 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, setDocumentNonBlocking, useMemoFirebase, useStorage } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useState, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
+import { generateSlug } from '@/lib/username-utils';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
@@ -172,6 +173,7 @@ export default function EditCreatorProfilePage() {
 
     const profileDocRef = doc(firestore, `users/${user.uid}/creatorProfile`, user.uid);
     const platformLinks = [...(data.instagramUrls || []), data.youtubeUrl, data.twitterUrl].filter(Boolean);
+    const newInstagramUrls = (data.instagramUrls || []).filter(Boolean);
 
     await setDocumentNonBlocking(profileDocRef, {
       bio: data.bio,
@@ -179,6 +181,58 @@ export default function EditCreatorProfilePage() {
       location: data.location,
       categories: data.categories,
     }, { merge: true });
+
+    // Clean up analytics entries for removed Instagram accounts
+    const existingAnalyticsMulti = creatorProfileData?.instagramAnalyticsMulti || {};
+    const staleUsernames = Object.keys(existingAnalyticsMulti).filter(
+      username => !newInstagramUrls.some(url => url.includes(username))
+    );
+    if (staleUsernames.length > 0) {
+      try {
+        const { deleteField } = await import('firebase/firestore');
+        const staleUpdate: Record<string, any> = {};
+        staleUsernames.forEach(u => { staleUpdate[`instagramAnalyticsMulti.${u}`] = deleteField(); });
+        await updateDoc(profileDocRef, staleUpdate);
+      } catch (e) {
+        console.warn('[instagram] Could not clean up stale analytics:', e);
+      }
+    }
+
+    // Generate username if creator doesn't have one yet
+    let username: string | null = userData?.username || null;
+    if (!username) {
+      try {
+        const slug = generateSlug(data.name);
+        // Find a unique slug by checking the `usernames` collection
+        let candidate = slug;
+        let suffix = 2;
+        while (true) {
+          const snap = await getDoc(doc(firestore, 'usernames', candidate));
+          if (!snap.exists()) {
+            username = candidate;
+            break;
+          }
+          const existingUid = snap.data()?.uid;
+          if (existingUid === user.uid) {
+            username = candidate;
+            break;
+          }
+          candidate = `${slug}_${suffix}`;
+          suffix++;
+        }
+        // Atomically claim the username
+        const { writeBatch } = await import('firebase/firestore');
+        const batch = writeBatch(firestore);
+        batch.set(doc(firestore, 'users', user.uid), { username }, { merge: true });
+        batch.set(doc(firestore, 'usernames', username!), { uid: user.uid });
+        await batch.commit();
+      } catch (err) {
+        // If rules aren't deployed yet, username generation fails silently.
+        // The profile data is still saved; username will be claimed on next save.
+        console.warn('[username] Could not claim username — deploy firestore.rules to enable this feature:', err);
+        username = null;
+      }
+    }
 
     toast({
       title: 'Profile Saved!',

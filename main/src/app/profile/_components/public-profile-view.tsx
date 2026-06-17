@@ -40,6 +40,7 @@ export interface PublicCampaign {
 
 export interface PublicProfileData {
   creatorId: string;
+  username?: string;
   // User doc
   name: string;
   email: string;
@@ -387,6 +388,7 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
                     cachedData={accountData}
                     isOwnProfile={false}
                     creatorId={data.creatorId}
+                    username={data.username}
                   />
                 );
               })}

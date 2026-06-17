@@ -7,6 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
     Instagram,
     Heart,
     MessageCircle,
@@ -22,7 +33,8 @@ import {
     Calendar,
     Loader2,
     CheckCircle,
-    Share2
+    Share2,
+    Unlink
 } from 'lucide-react';
 import Image from 'next/image';
 import type { InstagramAnalytics, InstagramPost } from '@/lib/instagram-types';
@@ -48,8 +60,10 @@ interface InstagramAnalyticsCardProps {
     instagramUrl?: string;
     cachedData?: InstagramAnalytics | null;
     onDataUpdate?: (data: InstagramAnalytics) => void;
+    onDisconnect?: () => void;
     isOwnProfile?: boolean;
     creatorId?: string;
+    username?: string;
 }
 
 function formatNumber(num: number): string {
@@ -169,8 +183,10 @@ export function InstagramAnalyticsCard({
     instagramUrl,
     cachedData,
     onDataUpdate,
+    onDisconnect,
     isOwnProfile = false,
-    creatorId
+    creatorId,
+    username
 }: InstagramAnalyticsCardProps) {
     const [data, setData] = useState<InstagramAnalytics | null>(cachedData || null);
     const [isLoading, setIsLoading] = useState(false);
@@ -179,8 +195,10 @@ export function InstagramAnalyticsCard({
 
     const handleShare = async () => {
         // Build the public profile URL for sharing (no auth required)
+        // Prefer username slug over raw UID for a clean URL
         const origin = window.location.origin;
-        const shareUrl = creatorId ? `${origin}/profile/${creatorId}` : window.location.href;
+        const profileSlug = username || creatorId;
+        const shareUrl = profileSlug ? `${origin}/profile/${profileSlug}` : window.location.href;
 
         try {
             if (navigator.share) {
@@ -374,16 +392,47 @@ export function InstagramAnalyticsCard({
                         </div>
                     </div>
                     {isOwnProfile && (
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={fetchInstagramData}
-                            disabled={isLoading}
-                            className="bg-white/20 hover:bg-white/30 text-white border-0"
-                        >
-                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                            Refresh
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={fetchInstagramData}
+                                disabled={isLoading}
+                                className="bg-white/20 hover:bg-white/30 text-white border-0"
+                            >
+                                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                                <span className="hidden sm:inline">Refresh</span>
+                            </Button>
+                            {onDisconnect && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="bg-red-500/20 hover:bg-red-500/40 text-red-100 border-0"
+                                            title="Disconnect Instagram Account"
+                                        >
+                                            <Unlink className="mr-2 h-4 w-4" />
+                                            <span className="hidden sm:inline">Disconnect</span>
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Disconnect Instagram Account?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Are you sure you want to remove this Instagram account? This will delete all cached analytics and remove the profile link. This action cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={onDisconnect} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                Disconnect
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                        </div>
                     )}
                 </div>
             </CardHeader>

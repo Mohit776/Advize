@@ -36,7 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { WishlistItem, Campaign, CollaborationRequest, Notification, Earning, Submission } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, where, orderBy, updateDoc, deleteField } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import React, { useMemo, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -475,7 +475,11 @@ export default function PublicCreatorProfilePage() {
 
   // Multi-account analytics: { username: InstagramAnalytics }
   const instagramAnalyticsMulti = creatorProfile?.instagramAnalyticsMulti || {};
-  const accountUsernames = Object.keys(instagramAnalyticsMulti);
+  // Only show analytics for accounts whose URL is still in platformLinks
+  // (guards against stale data when a user disconnects/removes an account)
+  const accountUsernames = Object.keys(instagramAnalyticsMulti).filter(username =>
+    instagramUrls.some((url: string) => url.includes(username))
+  );
   const [activeAccountTab, setActiveAccountTab] = useState<string>('');
 
   const isLoading = isCurrentUserLoading || isProfileLoading || isUserDocLoading || (isOwnProfile && (isWishlistLoading || isRequestsLoading || isNotificationsLoading));
@@ -743,6 +747,24 @@ export default function PublicCreatorProfilePage() {
                         cachedData={accountData}
                         isOwnProfile={isOwnProfile}
                         creatorId={creatorId}
+                        username={userData?.username}
+                        onDisconnect={async () => {
+                          if (creatorProfileRef && firestore && isOwnProfile) {
+                            try {
+                              const newPlatformLinks = (creatorProfile?.platformLinks || []).filter((url: string) => url !== accountUrl);
+                              await updateDoc(creatorProfileRef, {
+                                platformLinks: newPlatformLinks,
+                                [`instagramAnalyticsMulti.${username}`]: deleteField(),
+                              });
+                              toast({
+                                title: 'Account Disconnected',
+                                description: 'The Instagram account has been removed.',
+                              });
+                            } catch (e) {
+                              console.error('Error disconnecting:', e);
+                            }
+                          }
+                        }}
                         onDataUpdate={async (data) => {
                           if (creatorProfileRef && firestore && isOwnProfile) {
                             try {
