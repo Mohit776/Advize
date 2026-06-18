@@ -75,7 +75,33 @@ export async function POST(request: NextRequest) {
           `[Auto-DM] Incoming DM from ${senderId} to ${recipientId}: "${messageText}"`
         );
 
-        await processIncomingMessage(recipientId, senderId, messageText);
+        await processIncomingInteraction(recipientId, senderId, messageText, 'dm');
+      }
+
+      // Process comment webhooks
+      const changes = entry.changes ?? [];
+      for (const change of changes) {
+        if (change.field === 'comments') {
+          const value = change.value;
+          if (!value) continue;
+
+          const messageText = value.text;
+          const commenterId = value.from?.id;
+          const commentId = value.id;
+          const mediaId = value.media?.id;
+          const igUserId = entry.id; // The IG User ID receiving the comment
+
+          if (!messageText || !commenterId || !commentId || !igUserId || !mediaId) continue;
+
+          // Skip if we commented ourselves
+          if (commenterId === igUserId) continue;
+
+          console.log(
+            `[Auto-DM] Incoming comment from ${commenterId} on media ${mediaId}: "${messageText}"`
+          );
+
+          await processIncomingInteraction(igUserId, commenterId, messageText, 'comment', { commentId, mediaId });
+        }
       }
     }
 
@@ -89,10 +115,12 @@ export async function POST(request: NextRequest) {
 
 // ── Core Auto-Reply Logic ───────────────────────────────────────────────────
 
-async function processIncomingMessage(
+async function processIncomingInteraction(
   igUserId: string,
-  senderId: string,
-  messageText: string
+  senderId: string, // the commenter ID or DM sender ID
+  messageText: string,
+  type: 'dm' | 'comment',
+  commentData?: { commentId: string; mediaId: string }
 ) {
   try {
     // 1. Find the connected account by ig_user_id (String)
@@ -149,16 +177,29 @@ async function processIncomingMessage(
       return;
     }
 
-    const rules: AutoDMRule[] = rulesSnap.docs.map((doc) => ({
+    let rules: AutoDMRule[] = rulesSnap.docs.map((doc) => ({
       id: doc.id,
       ...(doc.data() as Omit<AutoDMRule, 'id'>),
     }));
+
+    // Filter rules by trigger type
+    rules = rules.filter((r) => {
+      const t = r.trigger_type || 'dm'; // fallback for old rules
+      if (type === 'dm') return t === 'dm';
+      if (type === 'comment') {
+        if (t === 'comment_any') return true;
+        if (t === 'comment_specific' && r.media_id === commentData?.mediaId) return true;
+      }
+      return false;
+    });
+
+    if (rules.length === 0) return;
 
     // 3. Match against rules
     const matchedRule = matchMessageToRule(messageText, rules);
 
     if (!matchedRule) {
-      console.log(`[Auto-DM] No rule matched for message: "${messageText}"`);
+      console.log(`[Auto-DM] No rule matched for ${type}: "${messageText}"`);
       return;
     }
 
@@ -167,7 +208,12 @@ async function processIncomingMessage(
     );
 
     // 4. Send the auto-reply
-    const result = await sendInstagramReply(accessToken, senderId, matchedRule.reply);
+    let result;
+    if (type === 'comment' && commentData?.commentId) {
+      result = await sendInstagramReply(accessToken, commentData.commentId, matchedRule.reply, true);
+    } else {
+      result = await sendInstagramReply(accessToken, senderId, matchedRule.reply, false);
+    }
 
     if (result.success) {
       console.log(`[Auto-DM] Reply sent successfully (messageId: ${result.messageId})`);
@@ -178,16 +224,18 @@ async function processIncomingMessage(
         ig_user_id: igUserId,
         sender_id: senderId,
         incoming_message: messageText,
+        trigger_type: type, // record how it was triggered
+        media_id: commentData?.mediaId || null,
         matched_rule_id: matchedRule.id,
         matched_keyword: matchedRule.keyword,
         reply_sent: matchedRule.reply,
-        message_id: result.messageId,
+        message_id: result.messageId || null,
         timestamp: Date.now(),
       });
     } else {
       console.error(`[Auto-DM] Failed to send reply: ${result.error}`);
     }
   } catch (err: any) {
-    console.error('[Auto-DM] Error in processIncomingMessage:', err);
+    console.error('[Auto-DM] Error in processIncomingInteraction:', err);
   }
 }

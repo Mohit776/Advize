@@ -22,6 +22,8 @@ import {
   ExternalLink,
   Link2,
   RefreshCw,
+  MessageSquare,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,12 +61,16 @@ import { useToast } from '@/hooks/use-toast';
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type MatchType = 'exact' | 'contains' | 'starts_with';
+export type TriggerType = 'dm' | 'comment_any' | 'comment_specific';
 
 type AutoDMRule = {
   id: string;
   creator_id: string;
   keyword: string;
   match_type: MatchType;
+  trigger_type?: TriggerType;
+  media_id?: string;
+  media_url?: string;
   reply: string;
   enabled: boolean;
   created_at: any;
@@ -105,6 +111,39 @@ const MATCH_TYPE_CONFIG: Record<
     color: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   },
 };
+
+const TRIGGER_TYPE_CONFIG: Record<
+  TriggerType,
+  { label: string; icon: React.ElementType; description: string; short: string }
+> = {
+  dm: {
+    label: 'Direct Message',
+    short: 'DM',
+    icon: MessageCircle,
+    description: 'When someone sends you a DM',
+  },
+  comment_any: {
+    label: 'Any Comment',
+    short: 'Any Comment',
+    icon: MessageSquare,
+    description: 'When someone comments on any post or reel',
+  },
+  comment_specific: {
+    label: 'Specific Post/Reel',
+    short: 'Specific Post',
+    icon: ImageIcon,
+    description: 'When someone comments on a selected post',
+  },
+};
+
+interface IGMedia {
+  id: string;
+  media_url: string;
+  thumbnail_url?: string;
+  permalink: string;
+  caption?: string;
+  media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM';
+}
 
 const INSTAGRAM_CLIENT_ID = process.env.NEXT_PUBLIC_INSTAGRAM_CLIENT_ID;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
@@ -197,6 +236,7 @@ function ConnectInstagramPanel({ creatorId }: { creatorId: string }) {
     const scope = [
       'instagram_business_basic',
       'instagram_business_manage_messages',
+      'instagram_manage_comments',
     ].join(',');
 
     const params = new URLSearchParams({
@@ -268,7 +308,7 @@ function ConnectInstagramPanel({ creatorId }: { creatorId: string }) {
           <p>
             Auto-DM requires an <strong className="text-foreground">Instagram Professional account</strong>{' '}
             (Business or Creator) and the{' '}
-            <strong className="text-foreground">instagram_business_manage_messages</strong> permission approved by Meta.
+            <strong className="text-foreground">instagram_business_manage_messages</strong> & <strong className="text-foreground">instagram_manage_comments</strong> permissions.
           </p>
         </div>
       </div>
@@ -300,6 +340,65 @@ function ConnectInstagramPanel({ creatorId }: { creatorId: string }) {
   );
 }
 
+// ── Media Picker ─────────────────────────────────────────────────────────────
+
+function MediaPicker({ accessToken, selectedId, onSelect }: { accessToken: string; selectedId: string; onSelect: (m: IGMedia) => void }) {
+  const [media, setMedia] = useState<IGMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadMedia() {
+      try {
+        const res = await fetch(`https://graph.instagram.com/v21.0/me/media?fields=id,media_type,media_url,thumbnail_url,permalink,caption&access_token=${accessToken}&limit=12`);
+        if (res.ok) {
+          const data = await res.json();
+          setMedia(data.data || []);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadMedia();
+  }, [accessToken]);
+
+  if (loading) {
+    return <div className="flex justify-center p-4 border border-white/5 rounded-lg bg-background/40"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (media.length === 0) {
+    return <div className="p-4 border border-white/5 rounded-lg bg-background/40 text-center text-sm text-muted-foreground">No recent posts found.</div>;
+  }
+
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-4 snap-x custom-scrollbar">
+      {media.map(m => {
+        const imgUrl = m.thumbnail_url || m.media_url;
+        const isSelected = selectedId === m.id;
+        return (
+          <div 
+            key={m.id} 
+            onClick={() => onSelect(m)}
+            title={m.caption || 'Instagram Post'}
+            className={`relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden cursor-pointer snap-start border-2 transition-all ${isSelected ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-transparent hover:border-white/20'}`}
+          >
+            {imgUrl ? (
+               <img src={imgUrl} alt="Post" className="w-full h-full object-cover" />
+            ) : (
+               <div className="w-full h-full bg-muted flex items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>
+            )}
+            {m.media_type === 'VIDEO' && <Zap className="absolute top-1 right-1 h-4 w-4 text-white drop-shadow-md" />}
+            {isSelected && (
+              <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                <div className="bg-purple-500 text-white rounded-full p-1"><CheckCircle2 className="h-4 w-4" /></div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Rules Manager ────────────────────────────────────────────────────────────
 
 function RulesManager({
@@ -318,6 +417,9 @@ function RulesManager({
   const [editingRule, setEditingRule] = useState<AutoDMRule | null>(null);
   const [keyword, setKeyword] = useState('');
   const [matchType, setMatchType] = useState<MatchType>('contains');
+  const [triggerType, setTriggerType] = useState<TriggerType>('dm');
+  const [mediaId, setMediaId] = useState<string>('');
+  const [mediaUrl, setMediaUrl] = useState<string>('');
   const [reply, setReply] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -347,6 +449,9 @@ function RulesManager({
   const resetForm = useCallback(() => {
     setKeyword('');
     setMatchType('contains');
+    setTriggerType('dm');
+    setMediaId('');
+    setMediaUrl('');
     setReply('');
     setEnabled(true);
     setEditingRule(null);
@@ -356,6 +461,9 @@ function RulesManager({
   const openEdit = useCallback((rule: AutoDMRule) => {
     setKeyword(rule.keyword);
     setMatchType(rule.match_type);
+    setTriggerType(rule.trigger_type || 'dm');
+    setMediaId(rule.media_id || '');
+    setMediaUrl(rule.media_url || '');
     setReply(rule.reply);
     setEnabled(rule.enabled);
     setEditingRule(rule);
@@ -377,6 +485,9 @@ function RulesManager({
         await updateDoc(doc(firestore, 'instagram_rules', editingRule.id), {
           keyword: keyword.trim(),
           match_type: matchType,
+          trigger_type: triggerType,
+          media_id: mediaId,
+          media_url: mediaUrl,
           reply: reply.trim(),
           enabled,
         });
@@ -388,6 +499,9 @@ function RulesManager({
           ig_username: account.username,
           keyword: keyword.trim(),
           match_type: matchType,
+          trigger_type: triggerType,
+          media_id: mediaId,
+          media_url: mediaUrl,
           reply: reply.trim(),
           enabled,
           created_at: serverTimestamp(),
@@ -584,7 +698,44 @@ function RulesManager({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 pt-2">
+              <Label htmlFor="auto-dm-trigger-type" className="text-sm font-medium">
+                Trigger Source
+              </Label>
+              <Select value={triggerType} onValueChange={v => setTriggerType(v as TriggerType)}>
+                <SelectTrigger id="auto-dm-trigger-type" className="bg-background/60">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TRIGGER_TYPE_CONFIG).map(([key, cfg]) => (
+                    <SelectItem key={key} value={key}>
+                      <div className="flex items-center gap-2">
+                        <cfg.icon className="h-4 w-4 text-purple-400" />
+                        <span>{cfg.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{TRIGGER_TYPE_CONFIG[triggerType].description}</p>
+            </div>
+
+            {triggerType === 'comment_specific' && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                <Label className="text-sm font-medium">Select a Post or Reel</Label>
+                <MediaPicker 
+                  accessToken={account.access_token} 
+                  selectedId={mediaId} 
+                  onSelect={(m) => {
+                    setMediaId(m.id);
+                    setMediaUrl(m.permalink);
+                  }} 
+                />
+                {!mediaId && <p className="text-xs text-amber-400">Please select a post to trigger this rule.</p>}
+              </div>
+            )}
+
+            <div className="space-y-2 pt-2">
               <Label htmlFor="auto-dm-reply" className="text-sm font-medium">
                 Auto Reply Message
               </Label>
@@ -641,7 +792,7 @@ function RulesManager({
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={isSaving || !keyword.trim() || !reply.trim()}
+                disabled={isSaving || !keyword.trim() || !reply.trim() || (triggerType === 'comment_specific' && !mediaId)}
                 className="flex-1 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 border-0 text-white"
               >
                 {isSaving ? (
@@ -681,6 +832,8 @@ function RulesManager({
         <div className="space-y-3">
           {rules.map((rule, index) => {
             const mtConfig = MATCH_TYPE_CONFIG[rule.match_type] || MATCH_TYPE_CONFIG.contains;
+            const tType = rule.trigger_type || 'dm';
+            const trigConfig = TRIGGER_TYPE_CONFIG[tType] || TRIGGER_TYPE_CONFIG.dm;
             const isToggling = togglingIds.has(rule.id);
 
             return (
@@ -699,8 +852,9 @@ function RulesManager({
                           ? 'bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20'
                           : 'bg-muted/50'
                         }`}
+                      title={trigConfig.label}
                     >
-                      <MessageCircle
+                      <trigConfig.icon
                         className={`h-5 w-5 ${rule.enabled ? 'text-purple-400' : 'text-muted-foreground'}`}
                       />
                     </div>
@@ -711,6 +865,9 @@ function RulesManager({
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${mtConfig.color}`}>
                           {React.createElement(mtConfig.icon, { className: 'h-2.5 w-2.5 mr-1' })}
                           {mtConfig.label}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-slate-500/10 text-slate-300 border-slate-500/20">
+                          {trigConfig.short}
                         </Badge>
                         {rule.enabled ? (
                           <Badge

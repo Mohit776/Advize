@@ -2,12 +2,16 @@
 // Keyword matching engine + Instagram Graph API message sender for Auto-DM.
 
 export type MatchType = 'exact' | 'contains' | 'starts_with';
+export type TriggerType = 'dm' | 'comment_any' | 'comment_specific';
 
 export interface AutoDMRule {
   id: string;
   creator_id: string;
   keyword: string;
   match_type: MatchType;
+  trigger_type?: TriggerType;
+  media_id?: string;
+  media_url?: string;
   reply: string;
   enabled: boolean;
   created_at: any;
@@ -56,13 +60,14 @@ export function matchMessageToRule(
 
 /**
  * Send a text message to an Instagram user via the Instagram Graph API.
- *
+ * 
  * @see https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging
  */
 export async function sendInstagramReply(
   accessToken: string,
   recipientId: string,
-  messageText: string
+  messageText: string,
+  isCommentReply: boolean = false
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const res = await fetch(
@@ -74,7 +79,7 @@ export async function sendInstagramReply(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          recipient: { id: recipientId },
+          recipient: isCommentReply ? { comment_id: recipientId } : { id: recipientId },
           message: { text: messageText },
         }),
       }
