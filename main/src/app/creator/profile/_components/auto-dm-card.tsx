@@ -236,7 +236,7 @@ function ConnectInstagramPanel({ creatorId }: { creatorId: string }) {
     const scope = [
       'instagram_business_basic',
       'instagram_business_manage_messages',
-      'instagram_manage_comments',
+      'instagram_business_manage_comments',
     ].join(',');
 
     const params = new URLSearchParams({
@@ -308,7 +308,7 @@ function ConnectInstagramPanel({ creatorId }: { creatorId: string }) {
           <p>
             Auto-DM requires an <strong className="text-foreground">Instagram Professional account</strong>{' '}
             (Business or Creator) and the{' '}
-            <strong className="text-foreground">instagram_business_manage_messages</strong> & <strong className="text-foreground">instagram_manage_comments</strong> permissions.
+            <strong className="text-foreground">instagram_business_manage_messages</strong> & <strong className="text-foreground">instagram_business_manage_comments</strong> permissions.
           </p>
         </div>
       </div>
