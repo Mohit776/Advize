@@ -187,7 +187,6 @@ async function processIncomingInteraction(
       const t = r.trigger_type || 'dm'; // fallback for old rules
       if (type === 'dm') return t === 'dm';
       if (type === 'comment') {
-        if (t === 'comment_any') return true;
         if (t === 'comment_specific' && r.media_id === commentData?.mediaId) return true;
       }
       return false;

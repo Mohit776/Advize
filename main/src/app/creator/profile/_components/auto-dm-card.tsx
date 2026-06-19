@@ -61,7 +61,7 @@ import { useToast } from '@/hooks/use-toast';
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type MatchType = 'exact' | 'contains' | 'starts_with';
-export type TriggerType = 'dm' | 'comment_any' | 'comment_specific';
+export type TriggerType = 'dm' | 'comment_specific';
 
 type AutoDMRule = {
   id: string;
@@ -121,12 +121,6 @@ const TRIGGER_TYPE_CONFIG: Record<
     short: 'DM',
     icon: MessageCircle,
     description: 'When someone sends you a DM',
-  },
-  comment_any: {
-    label: 'Any Comment',
-    short: 'Any Comment',
-    icon: MessageSquare,
-    description: 'When someone comments on any post or reel',
   },
   comment_specific: {
     label: 'Specific Post/Reel',

@@ -2,7 +2,7 @@
 // Keyword matching engine + Instagram Graph API message sender for Auto-DM.
 
 export type MatchType = 'exact' | 'contains' | 'starts_with';
-export type TriggerType = 'dm' | 'comment_any' | 'comment_specific';
+export type TriggerType = 'dm' | 'comment_specific';
 
 export interface AutoDMRule {
   id: string;
