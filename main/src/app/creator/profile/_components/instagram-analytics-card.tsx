@@ -34,7 +34,8 @@ import {
     Loader2,
     CheckCircle,
     Share2,
-    Unlink
+    Unlink,
+    Clock
 } from 'lucide-react';
 import Image from 'next/image';
 import type { InstagramAnalytics, InstagramPost } from '@/lib/instagram-types';
@@ -386,9 +387,10 @@ export function InstagramAnalyticsCard({
                         <Instagram className="h-6 w-6" />
                         <div>
                             <CardTitle className="text-white">Instagram Analytics</CardTitle>
-                            <CardDescription className="text-white/70">
-                                Last updated: {new Date(data.lastUpdated).toLocaleDateString()}
-                            </CardDescription>
+                            <span className="text-xs text-white/70 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Last updated: {new Date(data.lastUpdated).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
                         </div>
                     </div>
                     {isOwnProfile && (
@@ -551,7 +553,8 @@ export function InstagramAnalyticsCard({
                                     <YAxis tick={{ fontSize: 9 }} tickFormatter={(value) => formatNumber(value)} width={35} />
                                     <Tooltip
                                         formatter={(value: number) => [formatNumber(value), 'Engagement']}
-                                        labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                                        labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}
                                     />
                                     <Line
                                         type="monotone"

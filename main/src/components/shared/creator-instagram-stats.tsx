@@ -304,7 +304,7 @@ export function CreatorInstagramStats({
                         )}
 
                         <p className="text-xs text-muted-foreground text-center">
-                            Last updated: {new Date(data.lastUpdated).toLocaleDateString()}
+                            Last updated: {new Date(data.lastUpdated).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                     </div>
                 ) : (

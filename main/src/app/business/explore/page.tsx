@@ -410,7 +410,7 @@ export default function BusinessExplorePage() {
                       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Upload Date</p>
                       <p className="font-medium text-sm">
                         {selectedVideo?.createdAt?.seconds
-                          ? new Date(selectedVideo.createdAt.seconds * 1000).toLocaleDateString()
+                          ? new Date(selectedVideo.createdAt.seconds * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
                           : 'Just now'}
                       </p>
                     </div>

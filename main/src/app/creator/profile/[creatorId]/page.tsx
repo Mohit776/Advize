@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { WishlistItem, Campaign, CollaborationRequest, Notification, Earning, Submission } from '@/lib/types';
+import type { WishlistItem, Campaign, CollaborationRequest, Notification, Earning, Submission, FeaturedPost } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, orderBy, updateDoc, deleteField } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,6 +46,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { CampaignCard } from '@/app/campaigns/_components/campaign-card';
 import { InstagramAnalyticsCard } from '@/app/creator/profile/_components/instagram-analytics-card';
 import { AutoDMCard } from '@/app/creator/profile/_components/auto-dm-card';
+import { FeaturedPostsSection } from '@/app/creator/profile/_components/featured-posts-section';
 
 function MyCampaignsFeed({ userId }: { userId: string }) {
   const firestore = useFirestore();
@@ -552,6 +553,89 @@ export default function PublicCreatorProfilePage() {
     }
   };
 
+  // ── Featured Posts Handlers ──────────────────────────────────────────────
+  const featuredPosts: FeaturedPost[] = creatorProfile?.featuredPosts || [];
+
+  const handleAddFeaturedPost = async (url: string) => {
+    if (!isOwnProfile || !creatorProfileRef) return;
+    
+    try {
+      // 1. Fetch analytics from our scraper
+      const response = await fetch('/api/instagram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, type: 'post' }),
+      });
+      const result = await response.json();
+
+      let analyticsData = null;
+      if (result.success && result.data?.recentPosts?.[0]) {
+        const p = result.data.recentPosts[0];
+        analyticsData = {
+          likesCount: p.likesCount ?? 0,
+          commentsCount: p.commentsCount ?? 0,
+          videoViewsCount: p.videoViewsCount ?? null,
+          engagementRate: p.engagementRate ?? null,
+          caption: p.caption ?? null,
+          displayUrl: p.displayUrl ?? null,
+          type: p.type ?? null,
+        };
+      } else {
+        toast({
+          title: 'Analytics unavailable',
+          description: 'Could not fetch detailed stats for this post, but the link was added.',
+          variant: 'default',
+        });
+      }
+
+      const newPost: FeaturedPost = {
+        id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+        url,
+        addedAt: new Date().toISOString(),
+        analytics: analyticsData,
+      };
+
+      // 2. Save to Firestore
+      const updatedPosts = [newPost, ...featuredPosts];
+      await updateDoc(creatorProfileRef, {
+        featuredPosts: updatedPosts,
+      });
+      
+      toast({
+        title: 'Post Added',
+        description: 'The featured post has been added to your portfolio.',
+      });
+    } catch (error) {
+      console.error('Failed to add featured post', error);
+      toast({
+        title: 'Error',
+        description: 'Could not add the post. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRemoveFeaturedPost = async (id: string) => {
+    if (!isOwnProfile || !creatorProfileRef) return;
+    try {
+      const updatedPosts = featuredPosts.filter(p => p.id !== id);
+      await updateDoc(creatorProfileRef, {
+        featuredPosts: updatedPosts,
+      });
+      toast({
+        title: 'Post Removed',
+        description: 'The featured post was removed.',
+      });
+    } catch (error) {
+      console.error('Failed to remove featured post', error);
+      toast({
+        title: 'Error',
+        description: 'Could not remove the post. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="w-full mx-auto space-y-6">
@@ -712,6 +796,14 @@ export default function PublicCreatorProfilePage() {
             <TabsContent value="portfolio" className="mt-4 space-y-6">
               {/* Campaign Portfolio */}
               <CampaignPortfolio userId={userIdToView} />
+
+              {/* Featured Posts */}
+              <FeaturedPostsSection 
+                featuredPosts={featuredPosts}
+                isOwnProfile={isOwnProfile}
+                onAdd={handleAddFeaturedPost}
+                onRemove={handleRemoveFeaturedPost}
+              />
 
               {/* Instagram Analytics */}
               {accountUsernames.length > 0 ? (

@@ -217,6 +217,21 @@ export type Notification = {
   createdAt: any;
 };
 
+export type FeaturedPost = {
+  id: string;         // uuid generated client-side
+  url: string;        // Instagram reel/post URL
+  addedAt: string;    // ISO date string
+  analytics?: {
+    likesCount: number;
+    commentsCount: number;
+    videoViewsCount?: number;
+    engagementRate?: number;
+    caption?: string;
+    displayUrl?: string;   // thumbnail
+    type?: 'Image' | 'Video' | 'Sidecar';
+  } | null;
+};
+
 export type ExploreVideo = {
   id: string;
   title: string;

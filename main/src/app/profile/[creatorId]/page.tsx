@@ -74,6 +74,7 @@ async function getPublicProfileData(slug: string): Promise<PublicProfileData | n
     location: creatorProfileData.location || undefined,
     platformLinks: creatorProfileData.platformLinks || [],
     instagramAnalyticsMulti: creatorProfileData.instagramAnalyticsMulti || {},
+    featuredPosts: creatorProfileData.featuredPosts || [],
     campaigns,
     totalViews,
     totalEngagements,

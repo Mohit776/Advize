@@ -21,7 +21,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { InstagramAnalyticsCard } from '@/app/creator/profile/_components/instagram-analytics-card';
+import { FeaturedPostsSection } from '@/app/creator/profile/_components/featured-posts-section';
 import type { InstagramAnalytics } from '@/lib/instagram-types';
+import type { FeaturedPost } from '@/lib/types';
 
 // ── Types for serialised data passed from server ────────────────────────────
 
@@ -56,6 +58,7 @@ export interface PublicProfileData {
   campaigns?: PublicCampaign[];
   totalViews?: number;
   totalEngagements?: number;
+  featuredPosts?: FeaturedPost[];
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -352,6 +355,14 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
             campaigns={data.campaigns || []}
             totalViews={data.totalViews}
             totalEngagements={data.totalEngagements}
+          />
+
+          {/* Featured Posts */}
+          <FeaturedPostsSection
+            featuredPosts={data.featuredPosts || []}
+            isOwnProfile={false}
+            onAdd={async () => {}}
+            onRemove={async () => {}}
           />
 
           {/* Instagram Analytics */}
