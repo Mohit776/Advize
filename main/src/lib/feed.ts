@@ -159,6 +159,29 @@ export async function hasUserLiked(
 }
 
 /**
+ * Batch-check which posts in `postIds` the given user has liked.
+ * Returns a Set of postIds that the user has liked.
+ * Uses parallel getDoc calls (one per post) — far faster than sequential,
+ * and replaces N separate hasUserLiked() calls with a single Promise.all.
+ */
+export async function batchGetLikedPostIds(
+  firestore: Firestore,
+  userId: string,
+  postIds: string[]
+): Promise<Set<string>> {
+  if (!postIds.length) return new Set();
+  const likeDocs = await Promise.all(
+    postIds.map((postId) => getDoc(doc(firestore, 'posts', postId, 'likes', userId)))
+  );
+  const liked = new Set<string>();
+  likeDocs.forEach((snap, i) => {
+    if (snap.exists()) liked.add(postIds[i]);
+  });
+  return liked;
+}
+
+
+/**
  * Toggle like on a post. Uses a transaction to keep the likeCount accurate.
  * Returns the new liked state.
  */

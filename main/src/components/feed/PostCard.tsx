@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MessageCircle, Trash2, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
@@ -24,7 +24,7 @@ interface PostCardProps {
 const CONTENT_CLAMP_LENGTH = 280;
 
 
-export function PostCard({ post, isLiked, onDelete }: PostCardProps) {
+function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
   const { user } = useUser();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -169,3 +169,14 @@ export function PostCard({ post, isLiked, onDelete }: PostCardProps) {
     </article>
   );
 }
+function arePostPropsEqual(prev: PostCardProps, next: PostCardProps) {
+  return (
+    prev.post.id === next.post.id &&
+    prev.post.likeCount === next.post.likeCount &&
+    prev.post.commentCount === next.post.commentCount &&
+    prev.isLiked === next.isLiked &&
+    prev.onDelete === next.onDelete
+  );
+}
+
+export const PostCard = memo(PostCardInner, arePostPropsEqual);

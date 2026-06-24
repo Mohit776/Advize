@@ -5,11 +5,18 @@ import { Loader2, RefreshCw, Rss } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFirestore, useUser } from '@/firebase';
-import { FeedPost, getPosts, hasUserLiked, deletePost } from '@/lib/feed';
-import { PostCard } from './PostCard';
+import { FeedPost, getPosts, batchGetLikedPostIds, deletePost } from '@/lib/feed';
+import { VirtualPostCard } from './VirtualPostCard';
 import { DocumentSnapshot, doc, getDoc } from 'firebase/firestore';
 
 const PAGE_SIZE = 8;
+
+// ── Module-level username cache ──────────────────────────────────────────────
+// Persists for the lifetime of the browser tab; avoids re-fetching the same
+// author docs across page loads.
+const usernameCache = new Map<string, string | null>();
+
+// ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function PostCardSkeleton() {
   return (
@@ -33,10 +40,14 @@ function PostCardSkeleton() {
   );
 }
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface PostWithLike {
   post: FeedPost;
   isLiked: boolean;
 }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function FeedList() {
   const firestore = useFirestore();
@@ -51,7 +62,7 @@ export function FeedList() {
   const cursorRef = useRef<DocumentSnapshot | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Load a page of posts and resolve their liked state for the current user
+  // ── Load a page ─────────────────────────────────────────────────────────────
   const loadPage = useCallback(
     async (cursor: DocumentSnapshot | null, append: boolean) => {
       try {
@@ -59,47 +70,43 @@ export function FeedList() {
         cursorRef.current = lastDoc;
         setHasMore(posts.length === PAGE_SIZE);
 
-        // Resolve liked state for each post in parallel
-        const withLike: PostWithLike[] = await Promise.all(
-          posts.map(async (post) => {
-            const liked = user
-              ? await hasUserLiked(firestore, post.id, user.uid)
-              : false;
-            return { post, isLiked: liked };
-          })
-        );
+        // 1. Batch like status — one parallel batch instead of N sequential reads
+        const postIds = posts.map((p) => p.id);
+        const likedIds = user
+          ? await batchGetLikedPostIds(firestore, user.uid, postIds)
+          : new Set<string>();
 
-        // ── Backfill authorUsername for old posts that don't have it stored ──
-        // Collect unique authorIds that are missing a username
-        const missingIds = [
+        const withLike: PostWithLike[] = posts.map((post) => ({
+          post,
+          isLiked: likedIds.has(post.id),
+        }));
+
+        // 2. Backfill authorUsername — only for IDs not already in the cache
+        const uncachedIds = [
           ...new Set(
             withLike
-              .filter(({ post }) => !post.authorUsername)
+              .filter(({ post }) => !post.authorUsername && !usernameCache.has(post.authorId))
               .map(({ post }) => post.authorId)
           ),
         ];
 
-        if (missingIds.length > 0) {
-          // Batch-fetch user docs (one per unique author)
+        if (uncachedIds.length > 0) {
           const userDocs = await Promise.all(
-            missingIds.map((uid) => getDoc(doc(firestore, 'users', uid)))
+            uncachedIds.map((uid) => getDoc(doc(firestore, 'users', uid)))
           );
-          // Build a map: uid → username
-          const usernameMap: Record<string, string> = {};
           userDocs.forEach((snap) => {
-            if (snap.exists()) {
-              const username = snap.data().username;
-              if (username) usernameMap[snap.id] = username;
-            }
-          });
-
-          // Merge the username into each affected post
-          withLike.forEach(({ post }) => {
-            if (!post.authorUsername && usernameMap[post.authorId]) {
-              post.authorUsername = usernameMap[post.authorId];
-            }
+            const username = snap.exists() ? (snap.data().username ?? null) : null;
+            usernameCache.set(snap.id, username);
           });
         }
+
+        // Merge username from cache into posts that are missing it
+        withLike.forEach(({ post }) => {
+          if (!post.authorUsername) {
+            const cached = usernameCache.get(post.authorId);
+            if (cached) post.authorUsername = cached;
+          }
+        });
 
         setItems((prev) => (append ? [...prev, ...withLike] : withLike));
         setError(null);
@@ -111,13 +118,13 @@ export function FeedList() {
     [firestore, user]
   );
 
-  // Initial load
+  // ── Initial load ─────────────────────────────────────────────────────────────
   useEffect(() => {
     setIsLoading(true);
     loadPage(null, false).finally(() => setIsLoading(false));
   }, [loadPage]);
 
-  // Infinite scroll observer on sentinel element
+  // ── Infinite scroll — 600px prefetch margin ───────────────────────────────
   useEffect(() => {
     if (!sentinelRef.current || !hasMore) return;
 
@@ -129,12 +136,26 @@ export function FeedList() {
           setIsLoadingMore(false);
         }
       },
-      { threshold: 0.1 }
+      // Fire 600px BEFORE the sentinel enters the viewport → invisible prefetch
+      { rootMargin: '0px 0px 600px 0px', threshold: 0 }
     );
 
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, loadPage]);
+
+  // ── Stable delete handler — useCallback prevents memo invalidation ─────────
+  const handleDelete = useCallback(
+    async (postId: string) => {
+      try {
+        await deletePost(firestore, postId);
+        setItems((prev) => prev.filter((item) => item.post.id !== postId));
+      } catch (e) {
+        console.error('Failed to delete post:', e);
+      }
+    },
+    [firestore]
+  );
 
   const handleRefresh = () => {
     cursorRef.current = null;
@@ -143,16 +164,7 @@ export function FeedList() {
     loadPage(null, false).finally(() => setIsLoading(false));
   };
 
-  const handleDelete = async (postId: string) => {
-    try {
-      await deletePost(firestore, postId);
-      setItems((prev) => prev.filter((item) => item.post.id !== postId));
-    } catch (e) {
-      console.error('Failed to delete post:', e);
-    }
-  };
-
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -207,9 +219,9 @@ export function FeedList() {
         </Button>
       </div>
 
-      {/* Posts */}
+      {/* Posts — VirtualPostCard handles DOM windowing */}
       {items.map(({ post, isLiked }) => (
-        <PostCard
+        <VirtualPostCard
           key={post.id}
           post={post}
           isLiked={isLiked}
@@ -220,7 +232,7 @@ export function FeedList() {
       {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} className="h-4" />
 
-      {/* Load-more spinner */}
+      {/* Load-more spinner — rarely seen due to 600px prefetch */}
       {isLoadingMore && (
         <div className="flex justify-center py-4">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
