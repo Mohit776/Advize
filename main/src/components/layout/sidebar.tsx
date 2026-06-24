@@ -15,6 +15,7 @@ import {
     Search,
     Wallet,
     Store,
+    Rss,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore } from '@/firebase';
@@ -60,6 +61,7 @@ export function Sidebar() {
         { name: 'Dashboard', href: '/business/dashboard', icon: LayoutDashboard },
         { name: 'My Campaigns', href: '/business/campaigns', icon: Megaphone },
         { name: 'Explore Creators', href: '/business/explore', icon: Search },
+        { name: 'Feed', href: '/feed', icon: Rss },
         { name: 'Messages', href: '/business/messages', icon: MessageSquare },
         { name: 'Wallet', href: '/business/wallet', icon: Wallet },
     ];
@@ -68,6 +70,7 @@ export function Sidebar() {
     const creatorNav = [
         { name: 'My Profile', href: user?.uid ? `/creator/profile/${user.uid}` : '#', icon: User },
         { name: 'Browse Campaigns', href: '/campaigns', icon: Search },
+        { name: 'Feed', href: '/feed', icon: Rss },
         { name: 'Messages', href: '/creator/messages', icon: MessageSquare },
         { name: 'Wallet', href: '/creator/wallet', icon: Wallet },
     ];
