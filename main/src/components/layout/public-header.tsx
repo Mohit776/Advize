@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download, LogOut, Megaphone, Home, Store } from 'lucide-react';
+import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download, LogOut, Megaphone, Home, Store, Rss } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { Logo } from '@/components/logo';
@@ -201,6 +201,7 @@ export function PublicHeader() {
                       {[
                         { href: user?.uid ? `/creator/profile/${user.uid}` : '#', label: 'My Profile', icon: UserIcon },
                         { href: '/campaigns', label: 'Browse Campaigns', icon: Search },
+                        { href: '/feed', label: 'Feed', icon: Rss },
                         { href: '/creator/messages', label: 'Messages', icon: MessageSquare },
                         { href: '/creator/wallet', label: 'Wallet', icon: Wallet },
                         { href: '/settings', label: 'Settings', icon: Settings },
@@ -231,6 +232,7 @@ export function PublicHeader() {
                         { href: '#', label: 'Create Store', icon: Store, onClick: handleCreateStore },
                         { href: '/business/campaigns', label: 'My Campaigns', icon: Megaphone },
                         { href: '/business/explore', label: 'Explore Creators', icon: Search },
+                        { href: '/feed', label: 'Feed', icon: Rss },
                         { href: '/business/messages', label: 'Messages', icon: MessageSquare },
                         { href: '/business/wallet', label: 'Wallet', icon: Wallet },
                         { href: '/settings', label: 'Settings', icon: Settings },
@@ -466,6 +468,12 @@ export function PublicHeader() {
                       </Link>
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem asChild>
+                    <Link href="/feed">
+                      <Rss className="mr-2 h-4 w-4" />
+                      <span>Feed</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={getMessagesLink()}>
                       <MessageSquare className="mr-2 h-4 w-4" />

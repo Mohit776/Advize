@@ -20,6 +20,7 @@ import {
   Loader2,
   MessageCircle,
   Bot,
+  Share2,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -553,6 +554,36 @@ export default function PublicCreatorProfilePage() {
     }
   };
 
+  const handleShare = async () => {
+    const origin = window.location.origin;
+    const profileSlug = userData?.username || creatorId;
+    const shareUrl = profileSlug ? `${origin}/profile/${profileSlug}` : window.location.href;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: userData?.name || 'Creator Profile',
+          url: shareUrl
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: 'Link Copied',
+          description: 'Profile link copied to clipboard.',
+        });
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Error sharing:', err);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to share the profile.',
+        });
+      }
+    }
+  };
+
   // ── Featured Posts Handlers ──────────────────────────────────────────────
   const featuredPosts: FeaturedPost[] = creatorProfile?.featuredPosts || [];
 
@@ -631,6 +662,60 @@ export default function PublicCreatorProfilePage() {
       toast({
         title: 'Error',
         description: 'Could not remove the post. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRefreshFeaturedPosts = async () => {
+    if (!isOwnProfile || !creatorProfileRef) return;
+    
+    try {
+      const updatedPosts = await Promise.all(
+        featuredPosts.map(async (post) => {
+          try {
+            const response = await fetch('/api/instagram', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: post.url, type: 'post' }),
+            });
+            const result = await response.json();
+            
+            if (result.success && result.data?.recentPosts?.[0]) {
+              const p = result.data.recentPosts[0];
+              return {
+                ...post,
+                analytics: {
+                  likesCount: p.likesCount ?? 0,
+                  commentsCount: p.commentsCount ?? 0,
+                  videoViewsCount: p.videoViewsCount ?? null,
+                  engagementRate: p.engagementRate ?? null,
+                  caption: p.caption ?? null,
+                  displayUrl: p.displayUrl ?? null,
+                  type: p.type ?? null,
+                }
+              };
+            }
+          } catch (e) {
+            console.error('Failed to fetch for', post.url, e);
+          }
+          return post;
+        })
+      );
+      
+      await updateDoc(creatorProfileRef, {
+        featuredPosts: updatedPosts,
+      });
+      
+      toast({
+        title: 'Stats Refreshed',
+        description: 'Your featured posts have been updated.',
+      });
+    } catch (error) {
+      console.error('Failed to refresh featured posts', error);
+      toast({
+        title: 'Error',
+        description: 'Could not refresh the posts. Please try again.',
         variant: 'destructive',
       });
     }
@@ -728,6 +813,9 @@ export default function PublicCreatorProfilePage() {
                           Explore
                         </Link>
                       </Button>
+                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleShare} title="Share Profile">
+                        <Share2 className="h-4 w-4" />
+                      </Button>
                       <Button asChild variant="outline" size="icon" className="h-9 w-9">
                         <Link href={`/creator/profile/edit`}>
                           <Pencil className="h-4 w-4" />
@@ -771,10 +859,7 @@ export default function PublicCreatorProfilePage() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full h-auto justify-start overflow-x-auto overflow-y-hidden">
               <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-              {isOwnProfile && <TabsTrigger value="wishlist">Wishlist</TabsTrigger>}
-              {isOwnProfile && <TabsTrigger value="my-campaigns">My Campaigns</TabsTrigger>}
-              {isOwnProfile && <TabsTrigger value="analytics">Analytics</TabsTrigger>}
-              {isOwnProfile && (
+               {isOwnProfile && (
                 <TabsTrigger value="auto-dm">
                   <div className='flex items-center gap-2'>
                     <Bot className="h-4 w-4" />
@@ -782,6 +867,10 @@ export default function PublicCreatorProfilePage() {
                   </div>
                 </TabsTrigger>
               )}
+              {isOwnProfile && <TabsTrigger value="wishlist">Wishlist</TabsTrigger>}
+              {isOwnProfile && <TabsTrigger value="my-campaigns">My Campaigns</TabsTrigger>}
+              {isOwnProfile && <TabsTrigger value="analytics">Analytics</TabsTrigger>}
+             
               {isOwnProfile && (
                 <TabsTrigger value="inbox">
                   <div className='flex items-center gap-2'>
@@ -803,6 +892,7 @@ export default function PublicCreatorProfilePage() {
                 isOwnProfile={isOwnProfile}
                 onAdd={handleAddFeaturedPost}
                 onRemove={handleRemoveFeaturedPost}
+                onRefresh={handleRefreshFeaturedPosts}
               />
 
               {/* Instagram Analytics */}

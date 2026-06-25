@@ -194,39 +194,6 @@ export function InstagramAnalyticsCard({
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
 
-    const handleShare = async () => {
-        // Build the public profile URL for sharing (no auth required)
-        // Prefer username slug over raw UID for a clean URL
-        const origin = window.location.origin;
-        const profileSlug = username || creatorId;
-        const shareUrl = profileSlug ? `${origin}/profile/${profileSlug}` : window.location.href;
-
-        try {
-            if (navigator.share) {
-                await navigator.share({
-                    title: data?.profile?.fullName || 'Creator Profile',
-                    url: shareUrl
-                });
-            } else {
-                await navigator.clipboard.writeText(shareUrl);
-                toast({
-                    title: 'Link Copied',
-                    description: 'Profile link copied to clipboard.',
-                });
-            }
-        } catch (err: any) {
-            // Ignore AbortError when user cancels the native share dialog
-            if (err.name !== 'AbortError') {
-                console.error('Error sharing:', err);
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: 'Failed to share the profile.',
-                });
-            }
-        }
-    };
-
     const fetchInstagramData = async () => {
         if (!instagramUrl) {
             toast({
@@ -472,9 +439,6 @@ export function InstagramAnalyticsCard({
                             )}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={handleShare} title="Share Profile">
-                                <Share2 className="h-3.5 w-3.5" />
-                            </Button>
                             <a
                                 href={instagramUrl}
                                 target="_blank"

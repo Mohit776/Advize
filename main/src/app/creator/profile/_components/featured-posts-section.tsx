@@ -15,6 +15,7 @@ import {
   Loader2,
   Star,
   Link as LinkIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -101,11 +102,6 @@ function AggregateStatsBar({ posts }: { posts: FeaturedPost[] }) {
     (s, p) => s + (p.analytics?.videoViewsCount ?? 0),
     0,
   );
-  const avgEng =
-    postsWithData.length > 0
-      ? postsWithData.reduce((s, p) => s + (p.analytics?.engagementRate ?? 0), 0) /
-        postsWithData.length
-      : 0;
 
   const stats = [
     {
@@ -126,16 +122,10 @@ function AggregateStatsBar({ posts }: { posts: FeaturedPost[] }) {
       value: fmt(totalViews),
       gradient: 'from-violet-500 to-purple-600',
     },
-    {
-      icon: TrendingUp,
-      label: 'Avg. Engagement',
-      value: avgEng > 0 ? `${avgEng.toFixed(2)}%` : '—',
-      gradient: 'from-emerald-500 to-green-600',
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
       {stats.map(({ icon: Icon, label, value, gradient }) => (
         <div
           key={label}
@@ -254,12 +244,6 @@ function FeaturedPostCard({
                 <span className="font-medium text-foreground">{fmt(a.videoViewsCount)}</span>
               </div>
             )}
-            {(a.engagementRate ?? 0) > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 p-1.5 rounded-md">
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                <span className="font-medium text-foreground">{a.engagementRate?.toFixed(2)}%</span>
-              </div>
-            )}
           </div>
         ) : (
           <p className="text-xs text-muted-foreground italic mt-1">Analytics unavailable</p>
@@ -356,6 +340,7 @@ interface FeaturedPostsSectionProps {
   isOwnProfile: boolean;
   onAdd: (url: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
+  onRefresh?: () => Promise<void>;
 }
 
 export function FeaturedPostsSection({
@@ -363,8 +348,10 @@ export function FeaturedPostsSection({
   isOwnProfile,
   onAdd,
   onRemove,
+  onRefresh,
 }: FeaturedPostsSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -390,6 +377,16 @@ export function FeaturedPostsSection({
     }
   };
 
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const showOwnerControls = mounted && isOwnProfile;
 
   // Visitor + no posts → hide completely
@@ -404,18 +401,28 @@ export function FeaturedPostsSection({
             <Star className="h-3.5 w-3.5 text-white fill-white" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold leading-tight">Featured Posts</h3>
-            <p className="text-xs text-muted-foreground leading-tight">
-              {featuredPosts.length > 0
-                ? `${featuredPosts.length} featured post${featuredPosts.length === 1 ? '' : 's'}`
-                : 'Showcase your best work'}
-            </p>
+            <h3 className="text-sm font-semibold leading-tight">Past Collabs</h3>
+         
           </div>
         </div>
         {showOwnerControls && featuredPosts.length > 0 && (
-          <Badge variant="secondary" className="text-xs">
-            {featuredPosts.length} / 10
-          </Badge>
+          <div className="flex items-center gap-2">
+            {onRefresh && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            )}
+            <Badge variant="secondary" className="text-xs">
+              {featuredPosts.length} / 10
+            </Badge>
+          </div>
         )}
       </div>
 

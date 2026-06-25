@@ -44,6 +44,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import {
   collection,
@@ -148,32 +155,32 @@ const REDIRECT_URI = `${APP_URL}/api/instagram-auth/callback`;
 /** Gradient hero banner – reused in both states */
 function HeroBanner({ connectedAccount }: { connectedAccount?: InstagramAccount | null }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl p-6 mb-6">
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-card/40 backdrop-blur-xl p-8 mb-8 shadow-2xl">
       {/* Gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-600/25 via-purple-600/20 to-orange-500/15" />
-      <div className="absolute top-0 right-0 w-56 h-56 bg-gradient-to-bl from-pink-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-purple-600/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-fuchsia-500/5 to-orange-500/10" />
+      <div className="absolute -top-24 -right-24 w-64 h-64 bg-gradient-to-bl from-pink-500/20 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-gradient-to-tr from-purple-600/20 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative flex items-center gap-4">
+      <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
         <div className="relative flex-shrink-0">
-          <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-fuchsia-500 via-purple-600 to-orange-500 flex items-center justify-center shadow-xl shadow-purple-500/30">
-            <Bot className="h-7 w-7 text-white" />
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-fuchsia-500 via-purple-600 to-orange-500 flex items-center justify-center shadow-xl shadow-purple-500/20 ring-1 ring-white/20">
+            <Bot className="h-8 w-8 text-white" />
           </div>
-          <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center shadow-md">
-            <Instagram className="h-2.5 w-2.5 text-white" />
+          <div className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center shadow-lg border-2 border-background">
+            <Instagram className="h-3.5 w-3.5 text-white" />
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold tracking-tight">Instagram Auto DM</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h2 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">Instagram Auto DM</h2>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-md leading-relaxed">
             {connectedAccount
-              ? `Connected as @${connectedAccount.username}`
-              : 'Connect your Instagram to enable auto-replies'}
+              ? `Connected as @${connectedAccount.username}. Your auto-replies are active.`
+              : 'Engage your audience 24/7. Connect your Instagram to set up intelligent auto-replies for DMs and comments.'}
           </p>
         </div>
         {connectedAccount && (
-          <Badge className="flex-shrink-0 bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hidden sm:flex">
-            <ShieldCheck className="h-3 w-3 mr-1" />
+          <Badge className="flex-shrink-0 bg-emerald-500/15 text-emerald-400 border-emerald-500/30 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm hidden sm:flex">
+            <ShieldCheck className="h-4 w-4 mr-1.5" />
             Authenticated
           </Badge>
         )}
@@ -195,18 +202,18 @@ function StepRow({
   done?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-start gap-4">
       <div
-        className={`h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5 transition-colors ${done
+        className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm transition-all duration-300 ${done
             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-            : 'bg-purple-500/15 text-purple-400 border border-purple-500/20'
+            : 'bg-primary/10 text-primary border border-primary/20'
           }`}
       >
-        {done ? '✓' : number}
+        {done ? <CheckCircle2 className="h-4 w-4" /> : number}
       </div>
-      <div>
-        <p className={`text-sm font-medium ${done ? 'line-through text-muted-foreground' : ''}`}>{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+      <div className="pt-0.5">
+        <p className={`text-sm font-semibold tracking-tight ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{title}</p>
+        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{desc}</p>
       </div>
     </div>
   );
@@ -245,9 +252,9 @@ function ConnectInstagramPanel({ creatorId }: { creatorId: string }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* How it works */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { icon: MessageCircle, title: 'Receive DM', desc: 'Someone sends you a message on Instagram' },
           { icon: Search, title: 'Match Keyword', desc: 'System checks your keyword rules instantly' },
@@ -255,81 +262,91 @@ function ConnectInstagramPanel({ creatorId }: { creatorId: string }) {
         ].map((step, i) => (
           <div
             key={i}
-            className="flex items-start gap-3 rounded-xl bg-background/60 backdrop-blur-sm border border-white/5 p-3 hover:border-purple-500/20 hover:bg-background/80 transition-all"
+            className="group flex flex-col items-center text-center gap-4 rounded-2xl bg-card/30 backdrop-blur-md border border-white/5 p-6 hover:border-purple-500/30 hover:bg-card/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
           >
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <step.icon className="h-4 w-4 text-purple-400" />
+            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 group-hover:from-purple-500/20 group-hover:to-pink-500/20 flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110">
+              <step.icon className="h-7 w-7 text-purple-400" />
             </div>
             <div>
-              <p className="text-sm font-medium">{step.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
+              <p className="text-base font-semibold text-foreground tracking-tight">{step.title}</p>
+              <p className="text-sm text-muted-foreground mt-1.5">{step.desc}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Setup steps */}
-      <Card className="border-purple-500/15 bg-purple-500/5">
-        <CardContent className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-purple-300">Setup Steps</p>
-          <div className="space-y-4">
-            <StepRow
-              number={1}
-              title="Connect your Instagram account"
-              desc="Authenticate via Instagram's official OAuth — we never see your password"
-            />
-            <StepRow
-              number={2}
-              title="Create keyword rules"
-              desc="Set the keywords and the messages to auto-send"
-              done={false}
-            />
-            <StepRow
-              number={3}
-              title="Go live"
-              desc="Your rules start matching incoming DMs immediately"
-              done={false}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid md:grid-cols-2 gap-8 items-start">
+        {/* Setup steps */}
+        <Card className="border-white/10 bg-card/40 backdrop-blur-xl shadow-lg overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent pointer-events-none" />
+          <CardContent className="p-8 relative">
+            <h3 className="text-lg font-semibold tracking-tight mb-6 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-400" /> Quick Setup
+            </h3>
+            <div className="space-y-6">
+              <StepRow
+                number={1}
+                title="Connect Instagram"
+                desc="Securely authenticate via official OAuth"
+              />
+              <StepRow
+                number={2}
+                title="Create Rules"
+                desc="Define keywords and auto-reply messages"
+                done={false}
+              />
+              <StepRow
+                number={3}
+                title="Go Live"
+                desc="Instantly reply to your audience 24/7"
+                done={false}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Requirements note */}
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
-        <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p className="font-medium text-amber-400">Requirements</p>
-          <p>
-            Auto-DM requires an <strong className="text-foreground">Instagram Professional account</strong>{' '}
-            (Business or Creator) and the{' '}
-            <strong className="text-foreground">instagram_business_manage_messages</strong> & <strong className="text-foreground">instagram_business_manage_comments</strong> permissions.
-          </p>
+        <div className="space-y-6">
+          {/* Requirements note */}
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3 opacity-10"><AlertTriangle className="h-24 w-24 text-amber-500" /></div>
+            <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0 relative z-10">
+              <AlertTriangle className="h-6 w-6 text-amber-500" />
+            </div>
+            <div className="text-sm text-muted-foreground space-y-1.5 relative z-10">
+              <p className="font-semibold text-amber-500 text-base">Requirements</p>
+              <p className="leading-relaxed">
+                Requires an <strong className="text-foreground">Instagram Professional account</strong>{' '}
+                (Business or Creator) to access the messaging APIs.
+              </p>
+            </div>
+          </div>
+
+          {/* Connect button */}
+          <div className="space-y-3">
+            <Button
+              size="lg"
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="w-full bg-gradient-to-r from-fuchsia-600 via-purple-600 to-pink-600 hover:from-fuchsia-500 hover:via-purple-500 hover:to-pink-500 border-0 text-white shadow-xl shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-[1.02] transition-all duration-300 h-16 rounded-xl text-base font-semibold"
+            >
+              {isConnecting ? (
+                <>
+                  <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                  Redirecting to Instagram...
+                </>
+              ) : (
+                <>
+                  <Instagram className="mr-3 h-6 w-6" />
+                  Connect Instagram Account
+                </>
+              )}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Secured by Meta OAuth. We never see your password.
+            </p>
+          </div>
         </div>
       </div>
-
-      {/* Connect button */}
-      <Button
-        size="lg"
-        onClick={handleConnect}
-        disabled={isConnecting}
-        className="w-full bg-gradient-to-r from-fuchsia-600 via-purple-600 to-pink-600 hover:from-fuchsia-700 hover:via-purple-700 hover:to-pink-700 border-0 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 hover:scale-[1.01] transition-all h-12"
-      >
-        {isConnecting ? (
-          <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Redirecting to Instagram...
-          </>
-        ) : (
-          <>
-            <Instagram className="mr-2 h-5 w-5" />
-            Connect Instagram Account
-          </>
-        )}
-      </Button>
-
-      <p className="text-center text-xs text-muted-foreground">
-        We only request permissions required for messaging. Your credentials are secured via Meta OAuth.
-      </p>
     </div>
   );
 }
@@ -364,7 +381,7 @@ function MediaPicker({ accessToken, selectedId, onSelect }: { accessToken: strin
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4 snap-x custom-scrollbar">
+    <div className="flex gap-4 overflow-x-auto pb-4 snap-x custom-scrollbar">
       {media.map(m => {
         const imgUrl = m.thumbnail_url || m.media_url;
         const isSelected = selectedId === m.id;
@@ -373,17 +390,23 @@ function MediaPicker({ accessToken, selectedId, onSelect }: { accessToken: strin
             key={m.id} 
             onClick={() => onSelect(m)}
             title={m.caption || 'Instagram Post'}
-            className={`relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden cursor-pointer snap-start border-2 transition-all ${isSelected ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-transparent hover:border-white/20'}`}
+            className={`relative flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden cursor-pointer snap-start border-2 transition-all duration-300 ${isSelected ? 'border-purple-500 ring-4 ring-purple-500/20 scale-95' : 'border-white/5 hover:border-white/20 hover:scale-105'}`}
           >
             {imgUrl ? (
                <img src={imgUrl} alt="Post" className="w-full h-full object-cover" />
             ) : (
-               <div className="w-full h-full bg-muted flex items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>
+               <div className="w-full h-full bg-card/50 flex items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>
             )}
-            {m.media_type === 'VIDEO' && <Zap className="absolute top-1 right-1 h-4 w-4 text-white drop-shadow-md" />}
+            {m.media_type === 'VIDEO' && (
+               <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md rounded-md p-1">
+                 <Zap className="h-3 w-3 text-white" />
+               </div>
+            )}
             {isSelected && (
-              <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
-                <div className="bg-purple-500 text-white rounded-full p-1"><CheckCircle2 className="h-4 w-4" /></div>
+              <div className="absolute inset-0 bg-purple-500/30 backdrop-blur-[2px] flex items-center justify-center transition-all duration-300">
+                <div className="bg-purple-500 text-white rounded-full p-1.5 shadow-lg scale-110 animate-in zoom-in duration-200">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
               </div>
             )}
           </div>
@@ -454,7 +477,7 @@ function RulesManager({
 
   const openEdit = useCallback((rule: AutoDMRule) => {
     setKeyword(rule.keyword);
-    setMatchType(rule.match_type);
+    setMatchType(rule.match_type || 'contains');
     setTriggerType(rule.trigger_type || 'dm');
     setMediaId(rule.media_id || '');
     setMediaUrl(rule.media_url || '');
@@ -638,24 +661,22 @@ function RulesManager({
       )}
 
       {/* Create / Edit Form */}
-      {showForm && (
-        <Card className="border-purple-500/20 shadow-lg shadow-purple-500/5 animate-in slide-in-from-top-2 duration-300">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 flex items-center justify-center">
-                  <Sparkles className="h-4 w-4 text-purple-400" />
-                </div>
-                <CardTitle className="text-base">
-                  {editingRule ? 'Edit Rule' : 'New Auto-Reply Rule'}
-                </CardTitle>
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); else setShowForm(true); }}>
+        <DialogContent className="max-w-xl border-purple-500/20 shadow-lg shadow-purple-500/5">
+          <DialogHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-purple-400" />
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetForm}>
-                <X className="h-4 w-4" />
-              </Button>
+              <DialogTitle className="text-base">
+                {editingRule ? 'Edit Rule' : 'New Auto-Reply Rule'}
+              </DialogTitle>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            <DialogDescription className="sr-only">
+              Configure your auto-reply settings here.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="auto-dm-keyword" className="text-sm font-medium">
@@ -688,7 +709,7 @@ function RulesManager({
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">{MATCH_TYPE_CONFIG[matchType].description}</p>
+                <p className="text-xs text-muted-foreground">{(MATCH_TYPE_CONFIG[matchType] || MATCH_TYPE_CONFIG.contains).description}</p>
               </div>
             </div>
 
@@ -711,7 +732,7 @@ function RulesManager({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">{TRIGGER_TYPE_CONFIG[triggerType].description}</p>
+              <p className="text-xs text-muted-foreground">{(TRIGGER_TYPE_CONFIG[triggerType] || TRIGGER_TYPE_CONFIG.dm).description}</p>
             </div>
 
             {triggerType === 'comment_specific' && (
@@ -759,9 +780,9 @@ function RulesManager({
                 <p className="text-xs font-medium text-purple-400 uppercase tracking-wider">Preview</p>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={MATCH_TYPE_CONFIG[matchType].color}>
-                      {React.createElement(MATCH_TYPE_CONFIG[matchType].icon, { className: 'h-3 w-3 mr-1' })}
-                      {MATCH_TYPE_CONFIG[matchType].label}
+                    <Badge variant="outline" className={(MATCH_TYPE_CONFIG[matchType] || MATCH_TYPE_CONFIG.contains).color}>
+                      {React.createElement((MATCH_TYPE_CONFIG[matchType] || MATCH_TYPE_CONFIG.contains).icon, { className: 'h-3 w-3 mr-1' })}
+                      {(MATCH_TYPE_CONFIG[matchType] || MATCH_TYPE_CONFIG.contains).label}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
@@ -801,29 +822,39 @@ function RulesManager({
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Rules List */}
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2].map(i => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-muted" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-1/3 bg-muted rounded" />
-                    <div className="h-3 w-2/3 bg-muted rounded" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="rounded-xl border border-white/8 overflow-hidden divide-y divide-white/5">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex items-center gap-3 px-4 py-4 animate-pulse">
+              <div className="h-8 w-8 rounded-lg bg-muted/50 flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-24 bg-muted/50 rounded-md" />
+                <div className="h-3 w-48 bg-muted/30 rounded" />
+              </div>
+              <div className="h-5 w-12 bg-muted/30 rounded-full hidden sm:block" />
+              <div className="h-5 w-10 bg-muted/30 rounded-full hidden md:block" />
+              <div className="h-5 w-8 bg-muted/40 rounded-full" />
+              <div className="w-20" />
+            </div>
           ))}
         </div>
       ) : rules && rules.length > 0 ? (
-        <div className="space-y-3">
+        <div className="rounded-xl border border-white/8 overflow-hidden divide-y divide-white/5 bg-background/40">
+          {/* Column headers */}
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.02]">
+            <div className="w-8" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground flex-1">Keyword</span>
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground hidden sm:block w-28 text-center">Match</span>
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground hidden md:block w-20 text-center">Source</span>
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground w-16 text-center">Status</span>
+            <div className="w-20" />
+          </div>
+
           {rules.map((rule, index) => {
             const mtConfig = MATCH_TYPE_CONFIG[rule.match_type] || MATCH_TYPE_CONFIG.contains;
             const tType = rule.trigger_type || 'dm';
@@ -831,109 +862,135 @@ function RulesManager({
             const isToggling = togglingIds.has(rule.id);
 
             return (
-              <Card
+              <div
                 key={rule.id}
-                className={`group transition-all duration-300 hover:shadow-md ${rule.enabled
-                    ? 'border-white/10 hover:border-purple-500/20'
-                    : 'border-white/5 opacity-60 hover:opacity-80'
-                  }`}
-                style={{ animationDelay: `${index * 50}ms` }}
+                className={`group relative flex items-center gap-3 px-4 py-4 transition-all duration-200 ${
+                  rule.enabled
+                    ? 'hover:bg-purple-500/5'
+                    : 'opacity-50 hover:opacity-70 hover:bg-white/[0.02]'
+                }`}
+                style={{ animationDelay: `${index * 40}ms` }}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${rule.enabled
-                          ? 'bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20'
-                          : 'bg-muted/50'
-                        }`}
-                      title={trigConfig.label}
-                    >
-                      <trigConfig.icon
-                        className={`h-5 w-5 ${rule.enabled ? 'text-purple-400' : 'text-muted-foreground'}`}
-                      />
-                    </div>
+                {/* Left accent bar */}
+                <div
+                  className={`absolute left-0 top-2 bottom-2 w-0.5 rounded-full transition-all duration-300 group-hover:top-0 group-hover:bottom-0 ${
+                    rule.enabled ? 'bg-gradient-to-b from-fuchsia-500 to-purple-600' : 'bg-muted/40'
+                  }`}
+                />
 
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">&ldquo;{rule.keyword}&rdquo;</span>
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${mtConfig.color}`}>
-                          {React.createElement(mtConfig.icon, { className: 'h-2.5 w-2.5 mr-1' })}
-                          {mtConfig.label}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-slate-500/10 text-slate-300 border-slate-500/20">
-                          {trigConfig.short}
-                        </Badge>
-                        {rule.enabled ? (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                          >
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] px-1.5 py-0 bg-slate-500/15 text-slate-400 border-slate-500/30"
-                          >
-                            Paused
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap">
-                        ↳ {rule.reply}
-                      </p>
-                    </div>
+                {/* Trigger source icon */}
+                <div
+                  className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                    rule.enabled
+                      ? 'bg-gradient-to-br from-fuchsia-500/15 to-purple-600/15 group-hover:from-fuchsia-500/25 group-hover:to-purple-600/25'
+                      : 'bg-muted/30'
+                  }`}
+                  title={trigConfig.label}
+                >
+                  <trigConfig.icon
+                    className={`h-4 w-4 ${rule.enabled ? 'text-purple-400' : 'text-muted-foreground'}`}
+                  />
+                </div>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Switch
-                        checked={rule.enabled}
-                        onCheckedChange={() => handleToggle(rule)}
-                        disabled={isToggling}
-                        aria-label={`Toggle rule "${rule.keyword}"`}
-                      />
+                {/* Keyword + reply preview */}
+                <div className="flex-1 min-w-0">
+                  <span
+                    className={`inline-block font-mono text-sm font-semibold px-2 py-0.5 rounded-md ${
+                      rule.enabled
+                        ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20'
+                        : 'bg-muted/30 text-muted-foreground border border-white/5'
+                    }`}
+                  >
+                    {rule.keyword}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1 leading-relaxed">
+                    <span className="text-purple-400/60 mr-1">↳</span>
+                    {rule.reply}
+                  </p>
+                </div>
+
+                {/* Match type badge */}
+                <div className="hidden sm:flex justify-center w-28">
+                  <Badge variant="outline" className={`text-[10px] px-2 py-0.5 gap-1 ${mtConfig.color}`}>
+                    {React.createElement(mtConfig.icon, { className: 'h-2.5 w-2.5' })}
+                    {mtConfig.label}
+                  </Badge>
+                </div>
+
+                {/* Source pill */}
+                <div className="hidden md:flex justify-center w-20">
+                  <span className="text-[10px] text-muted-foreground bg-white/5 border border-white/8 px-2 py-0.5 rounded-full">
+                    {trigConfig.short}
+                  </span>
+                </div>
+
+                {/* Enable/disable toggle */}
+                <div className="w-16 flex justify-center">
+                  <Switch
+                    checked={rule.enabled}
+                    onCheckedChange={() => handleToggle(rule)}
+                    disabled={isToggling}
+                    aria-label={`Toggle rule "${rule.keyword}"`}
+                    className="scale-90"
+                  />
+                </div>
+
+                {/* Row actions — appear on hover */}
+                <div className="w-20 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg hover:bg-purple-500/10 hover:text-purple-400"
+                    onClick={() => openEdit(rule)}
+                    title="Edit rule"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => openEdit(rule)}
+                        className="h-7 w-7 rounded-lg hover:bg-red-500/10 hover:text-red-400 text-muted-foreground"
+                        title="Delete rule"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Rule</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete the auto-reply rule for &ldquo;{rule.keyword}&rdquo;?
-                              This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(rule.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Rule</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete the auto-reply rule for &ldquo;{rule.keyword}&rdquo;?
+                          This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(rule.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
             );
           })}
+
+          {/* List footer */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.015]">
+            <span className="text-[11px] text-muted-foreground">
+              {enabledCount} of {totalCount} rule{totalCount !== 1 ? 's' : ''} active
+            </span>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="text-[11px] text-muted-foreground">Monitoring DMs</span>
+            </div>
+          </div>
         </div>
       ) : (
         !showForm && (
@@ -966,18 +1023,13 @@ function RulesManager({
 
       {/* Info tip */}
       {totalCount > 0 && (
-        <Card className="bg-amber-500/5 border-amber-500/15">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-amber-400">How rules are applied</p>
-              <p>
-                When an Instagram DM arrives, rules are checked in order (oldest first). The first matching rule&apos;s
-                reply is sent. Rules only fire for accounts authenticated via the connected Instagram above.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-muted-foreground space-y-0.5">
+            <p className="font-medium text-amber-400">How rules are applied</p>
+            <p>Rules are checked in order (oldest first). The first matching rule&apos;s reply is sent. Rules only fire for accounts authenticated via the connected Instagram above.</p>
+          </div>
+        </div>
       )}
     </div>
   );
