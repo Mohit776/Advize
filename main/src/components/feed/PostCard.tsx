@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { MessageCircle, Trash2, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
 import { formatDistanceToNow } from 'date-fns';
@@ -129,15 +130,30 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
 
       {/* ── Image ── */}
       {post.imageUrl && (
-        <div className="relative w-full aspect-video bg-muted overflow-hidden">
-          <Image
-            src={post.imageUrl}
-            alt="Post image"
-            fill
-            className="object-cover transition-transform duration-300 hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 680px"
-          />
-        </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <div className="relative w-full bg-muted overflow-hidden flex justify-center cursor-pointer">
+              <Image
+                src={post.imageUrl}
+                alt="Post image"
+                width={0}
+                height={0}
+                sizes="(max-width: 768px) 100vw, 680px"
+                className="w-full h-auto max-h-[400px] object-contain transition-transform duration-300 hover:scale-105"
+                unoptimized
+              />
+            </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-[90vw] max-h-[90vh] w-fit p-0 overflow-hidden border-none bg-transparent shadow-none flex justify-center items-center">
+            <DialogTitle className="sr-only">View Image</DialogTitle>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={post.imageUrl}
+              alt="Post image full"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-md"
+            />
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* ── Actions ── */}

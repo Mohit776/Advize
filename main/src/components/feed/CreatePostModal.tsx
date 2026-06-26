@@ -52,7 +52,7 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
         const d = snap.data();
         setUserRole(d.role ?? 'creator');
         setUserName(d.displayName ?? d.name ?? user.email ?? 'User');
-        setUserAvatar(d.photoURL ?? d.avatar ?? undefined);
+        setUserAvatar(d.logoUrl ?? d.photoURL ?? d.avatar ?? undefined);
         setUserUsername(d.username ?? undefined);
       }
     };

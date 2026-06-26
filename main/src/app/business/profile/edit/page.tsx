@@ -16,14 +16,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UploadCloud, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, setDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, setDocumentNonBlocking, useMemoFirebase, useStorage } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 
 const profileFormSchema = z.object({
   brandName: z.string().min(2, 'Brand name is too short'),
@@ -44,6 +46,10 @@ export default function EditBusinessProfilePage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const businessProfileRef = useMemoFirebase(
     () => (user ? doc(firestore, `users/${user.uid}/businessProfile`, user.uid) : null),
@@ -87,8 +93,38 @@ export default function EditBusinessProfilePage() {
         twitter: businessProfileData.twitter || '',
         instagram: businessProfileData.instagram || '',
       });
+      if (userData.logoUrl) {
+        setAvatarPreview(userData.logoUrl);
+      }
     }
   }, [businessProfileData, userData, form]);
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !user) {
+      return;
+    }
+    const file = event.target.files[0];
+    setIsUploading(true);
+
+    const storageRef = ref(storage, `profile-images/${user.uid}/${file.name}`);
+
+    try {
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      setAvatarPreview(downloadURL);
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDocumentNonBlocking(userDocRef, { logoUrl: downloadURL }, { merge: true });
+
+      toast({ title: "Avatar updated successfully!" });
+    } catch (error) {
+      console.error("Upload failed", error);
+      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload your avatar." });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
 
   async function onSubmit(data: ProfileFormValues) {
@@ -164,7 +200,44 @@ export default function EditBusinessProfilePage() {
               <CardTitle>Brand Information</CardTitle>
               <CardDescription>This is how your brand will appear to creators.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-6">
+                <div className="relative">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleAvatarUpload}
+                    accept="image/png, image/jpeg, image/gif"
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-24 w-24 rounded-full bg-muted flex items-center justify-center cursor-pointer overflow-hidden group relative"
+                  >
+                    {avatarPreview ? (
+                      <Image src={avatarPreview} alt="Avatar Preview" fill style={{ objectFit: 'cover' }} />
+                    ) : (
+                      <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                    )}
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UploadCloud className="h-8 w-8 text-white" />
+                    </div>
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold">Brand Logo / Profile Picture</h3>
+                  <p className="text-sm text-muted-foreground">Click the icon to upload a PNG or JPG.</p>
+                  <Button type="button" size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                    Change Avatar
+                  </Button>
+                </div>
+              </div>
+
               <FormField
                 control={form.control}
                 name="brandName"

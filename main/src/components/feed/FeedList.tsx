@@ -14,7 +14,7 @@ const PAGE_SIZE = 8;
 // ── Module-level username cache ──────────────────────────────────────────────
 // Persists for the lifetime of the browser tab; avoids re-fetching the same
 // author docs across page loads.
-const usernameCache = new Map<string, string | null>();
+const userCache = new Map<string, { username: string | null, avatar: string | null }>();
 
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -81,11 +81,11 @@ export function FeedList() {
           isLiked: likedIds.has(post.id),
         }));
 
-        // 2. Backfill authorUsername — only for IDs not already in the cache
+        // 2. Backfill author information — only for IDs not already in the cache
         const uncachedIds = [
           ...new Set(
             withLike
-              .filter(({ post }) => !post.authorUsername && !usernameCache.has(post.authorId))
+              .filter(({ post }) => (!post.authorUsername || !post.authorAvatar) && !userCache.has(post.authorId))
               .map(({ post }) => post.authorId)
           ),
         ];
@@ -95,16 +95,22 @@ export function FeedList() {
             uncachedIds.map((uid) => getDoc(doc(firestore, 'users', uid)))
           );
           userDocs.forEach((snap) => {
-            const username = snap.exists() ? (snap.data().username ?? null) : null;
-            usernameCache.set(snap.id, username);
+            if (snap.exists()) {
+              const d = snap.data();
+              const avatar = d.logoUrl ?? d.photoURL ?? d.avatar ?? null;
+              userCache.set(snap.id, { username: d.username ?? null, avatar });
+            } else {
+              userCache.set(snap.id, { username: null, avatar: null });
+            }
           });
         }
 
-        // Merge username from cache into posts that are missing it
+        // Merge user info from cache into posts that are missing it
         withLike.forEach(({ post }) => {
-          if (!post.authorUsername) {
-            const cached = usernameCache.get(post.authorId);
-            if (cached) post.authorUsername = cached;
+          const cached = userCache.get(post.authorId);
+          if (cached) {
+            if (!post.authorUsername && cached.username) post.authorUsername = cached.username;
+            if (!post.authorAvatar && cached.avatar) post.authorAvatar = cached.avatar;
           }
         });
 

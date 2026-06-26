@@ -1,3 +1,8 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -11,6 +16,18 @@ import { ForCreators } from './_components/for-creators';
 import { ForBrands } from './_components/for-brands';
 
 export default function Home() {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.replace('/feed');
+    }
+  }, [user, isUserLoading, router]);
+
+  // Show nothing while checking auth (avoids landing page flash for logged-in users)
+  if (isUserLoading || user) return null;
+
   return (
     <div className="flex min-h-dvh flex-col">
       <PublicHeader />

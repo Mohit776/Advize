@@ -16,6 +16,7 @@ interface UserProfile {
   bio?: string;
   photoURL?: string;
   avatar?: string;
+  logoUrl?: string;
   role?: 'creator' | 'business';
   location?: string;
   website?: string;
@@ -47,7 +48,7 @@ export function ProfileCard() {
   if (!user) return null;
 
   const displayName = profile?.displayName ?? profile?.name ?? user.email ?? 'User';
-  const avatar = profile?.photoURL ?? profile?.avatar;
+  const avatar = profile?.logoUrl ?? profile?.photoURL ?? profile?.avatar;
   const role = profile?.role ?? 'creator';
   const profileHref =
     role === 'creator'
