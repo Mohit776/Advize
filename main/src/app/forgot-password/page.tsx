@@ -10,9 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,10 +26,21 @@ export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: '' },
   });
+
+  // Redirect logged-in users to feed
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.replace('/feed');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || user) return null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);

@@ -17,7 +17,7 @@ import { FormDescription } from '@/components/ui/form';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
@@ -65,9 +65,19 @@ function SignupContent() {
   const searchParams = useSearchParams();
   const auth = useAuth();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
   const initialRole = searchParams.get('role') === 'business' ? 'business' : 'creator';
   const [role, setRole] = useState<Role>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect logged-in users to feed
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.replace('/feed');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || user) return null;
 
   const creatorForm = useForm<z.infer<typeof creatorFormSchema>>({
     resolver: zodResolver(creatorFormSchema),

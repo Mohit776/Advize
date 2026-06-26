@@ -226,19 +226,7 @@ export function FeedList() {
   return (
     <div className="space-y-4">
       {/* Refresh button */}
-      <div className="flex justify-end">
-        <Button
-          id="feed-refresh-btn"
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          className="gap-1.5 text-muted-foreground hover:text-foreground rounded-xl text-xs"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
-
+    
       {/* Posts — VirtualPostCard handles DOM windowing */}
       {items.map(({ post, isLiked }) => (
         <VirtualPostCard
