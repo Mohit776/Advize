@@ -61,6 +61,9 @@ export function FeedList() {
 
   const cursorRef = useRef<DocumentSnapshot | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const isLoadingMoreRef = useRef(false);
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   // ── Load a page ─────────────────────────────────────────────────────────────
   const loadPage = useCallback(
@@ -70,10 +73,11 @@ export function FeedList() {
         cursorRef.current = lastDoc;
         setHasMore(posts.length === PAGE_SIZE);
 
-        // 1. Batch like status — one parallel batch instead of N sequential reads
+        // 1. Batch like status
         const postIds = posts.map((p) => p.id);
-        const likedIds = user
-          ? await batchGetLikedPostIds(firestore, user.uid, postIds)
+        const currentUser = userRef.current;
+        const likedIds = currentUser
+          ? await batchGetLikedPostIds(firestore, currentUser.uid, postIds)
           : new Set<string>();
 
         const withLike: PostWithLike[] = posts.map((post) => ({
@@ -121,7 +125,7 @@ export function FeedList() {
         setError('Failed to load posts. Please try again.');
       }
     },
-    [firestore, user]
+    [firestore] // stable — no longer depends on `user` (uses userRef instead)
   );
 
   // ── Initial load ─────────────────────────────────────────────────────────────
@@ -130,25 +134,35 @@ export function FeedList() {
     loadPage(null, false).finally(() => setIsLoading(false));
   }, [loadPage]);
 
-  // ── Infinite scroll — 600px prefetch margin ───────────────────────────────
+  // ── Infinite scroll — window scroll listener ─────────────────────────────
   useEffect(() => {
-    if (!sentinelRef.current || !hasMore) return;
+    if (!hasMore) return;
 
-    const observer = new IntersectionObserver(
-      async ([entry]) => {
-        if (entry.isIntersecting && !isLoadingMore && hasMore) {
-          setIsLoadingMore(true);
-          await loadPage(cursorRef.current, true);
-          setIsLoadingMore(false);
-        }
-      },
-      // Fire 600px BEFORE the sentinel enters the viewport → invisible prefetch
-      { rootMargin: '0px 0px 600px 0px', threshold: 0 }
-    );
+    const checkAndLoad = async () => {
+      if (isLoadingMoreRef.current || !hasMore) return;
+      // Trigger when user is within 400px of page bottom
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 400;
+      if (nearBottom) {
+        isLoadingMoreRef.current = true;
+        setIsLoadingMore(true);
+        await loadPage(cursorRef.current, true);
+        setIsLoadingMore(false);
+        isLoadingMoreRef.current = false;
+      }
+    };
 
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, loadPage]);
+    // Check immediately in case all posts fit within the viewport
+    checkAndLoad();
+
+    window.addEventListener('scroll', checkAndLoad, { passive: true });
+    window.addEventListener('resize', checkAndLoad, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', checkAndLoad);
+      window.removeEventListener('resize', checkAndLoad);
+    };
+  }, [hasMore, loadPage]);
 
   // ── Stable delete handler — useCallback prevents memo invalidation ─────────
   const handleDelete = useCallback(
@@ -238,10 +252,30 @@ export function FeedList() {
       {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} className="h-4" />
 
-      {/* Load-more spinner — rarely seen due to 600px prefetch */}
-      {isLoadingMore && (
+      {/* Load-more — visible button + auto-trigger via sentinel */}
+      {hasMore && (
         <div className="flex justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <Button
+            id="feed-load-more-btn"
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (isLoadingMoreRef.current) return;
+              isLoadingMoreRef.current = true;
+              setIsLoadingMore(true);
+              await loadPage(cursorRef.current, true);
+              setIsLoadingMore(false);
+              isLoadingMoreRef.current = false;
+            }}
+            disabled={isLoadingMore}
+            className="gap-2 rounded-xl px-6"
+          >
+            {isLoadingMore ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Loading…</>
+            ) : (
+              'Load More Posts'
+            )}
+          </Button>
         </div>
       )}
 

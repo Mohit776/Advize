@@ -64,13 +64,8 @@ function LoginContent() {
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists()) {
-          // User exists, this is a subsequent login.
-          const userRole = userDoc.data().role;
-          if (userRole === 'business') {
-            router.replace('/business/profile');
-          } else { // 'creator'
-            router.replace(`/creator/profile/${user.uid}`);
-          }
+          // User exists, this is a subsequent login — go to feed.
+          router.replace('/feed');
         } else {
           // This is a new, verified user's first login. Create their profile documents.
           // Check localStorage first (set during signup), then URL param, then default
