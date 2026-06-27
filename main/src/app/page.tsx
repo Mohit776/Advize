@@ -25,8 +25,22 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  // Show nothing while checking auth (avoids landing page flash for logged-in users)
-  if (isUserLoading || user) return null;
+  // While Firebase is checking auth state, show a full-screen spinner.
+  // This prevents the landing page from flashing for logged-in users,
+  // and gives non-logged-in users instant visual feedback.
+  if (isUserLoading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+          <p className="text-sm text-muted-foreground animate-pulse">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Already authenticated — redirect is in-flight via useEffect above
+  if (user) return null;
 
   return (
     <div className="flex min-h-dvh flex-col">
