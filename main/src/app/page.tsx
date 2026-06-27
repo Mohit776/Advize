@@ -21,7 +21,14 @@ export default function Home() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.replace('/feed');
+      // Use window.location.replace as primary redirect — this works on mobile
+      // (including PWA standalone mode & Safari) even before full hydration.
+      // router.replace is kept as a fallback for environments without window.
+      if (typeof window !== 'undefined') {
+        window.location.replace('/feed');
+      } else {
+        router.replace('/feed');
+      }
     }
   }, [user, isUserLoading, router]);
 

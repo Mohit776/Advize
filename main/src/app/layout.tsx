@@ -117,15 +117,21 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Advize" />
-        {/* Register Service Worker */}
+        {/* Register Service Worker — updateViaCache:'none' forces mobile to always
+            fetch the latest sw.js instead of serving a cached copy for up to 24 h */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
-                    console.log('SW registration failed: ', err);
-                  });
+                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                    .then(function(reg) {
+                      // Force immediate update check so new SW activates without delay
+                      reg.update();
+                    })
+                    .catch(function(err) {
+                      console.log('SW registration failed: ', err);
+                    });
                 });
               }
             `,
