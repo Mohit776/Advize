@@ -120,12 +120,17 @@ export default function VerifyEmailPage() {
         description: 'Your account has been verified successfully.',
       });
 
-      // Reload user to pick up emailVerified = true, then redirect
+      // Reload user to pick up emailVerified = true.
+      // user.reload() does NOT trigger onAuthStateChanged, so we also
+      // force a token refresh which does trigger the auth state listener.
       await user.reload();
+      await user.getIdToken(true);
+
       const storedRole = localStorage.getItem('signupRole') || 'creator';
+      // Short delay so the user sees the success state before navigating
       setTimeout(() => {
         router.replace(`/login?role=${storedRole}`);
-      }, 1500);
+      }, 1000);
     } catch (error: any) {
       const message = error?.message || 'Verification failed. Please try again.';
       setErrorMsg(message);

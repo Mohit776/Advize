@@ -21,13 +21,12 @@ export default function Home() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      // Use window.location.replace as primary redirect — this works on mobile
-      // (including PWA standalone mode & Safari) even before full hydration.
-      // router.replace is kept as a fallback for environments without window.
+      // Unverified users should complete verification, not access the feed.
+      const target = user.emailVerified ? '/feed' : '/auth/verify-email';
       if (typeof window !== 'undefined') {
-        window.location.replace('/feed');
+        window.location.replace(target);
       } else {
-        router.replace('/feed');
+        router.replace(target);
       }
     }
   }, [user, isUserLoading, router]);

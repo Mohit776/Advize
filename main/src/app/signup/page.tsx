@@ -16,7 +16,7 @@ import { Star, Briefcase, Instagram } from 'lucide-react';
 import { FormDescription } from '@/components/ui/form';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -70,15 +70,11 @@ function SignupContent() {
   const [role, setRole] = useState<Role>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect logged-in users to feed
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      router.replace('/feed');
-    }
-  }, [user, isUserLoading, router]);
+  // When a form submission is in-flight, the submit handler owns navigation.
+  // The redirect useEffect must NOT interfere.
+  const isSubmitting = useRef(false);
 
-  if (isUserLoading || user) return null;
-
+  // All hooks must be called before any conditional returns (Rules of Hooks).
   const creatorForm = useForm<z.infer<typeof creatorFormSchema>>({
     resolver: zodResolver(creatorFormSchema),
     defaultValues: { name: '', instagramUrl: '', email: '', password: '', confirmPassword: '', acceptTerms: false },
@@ -94,9 +90,41 @@ function SignupContent() {
     businessForm.reset();
   }, [role, creatorForm, businessForm]);
 
+  // Redirect already-authenticated users (only when NOT mid-submission).
+  // If email is NOT verified → verify-email page.
+  // If verified → feed.
+  useEffect(() => {
+    if (isSubmitting.current) return; // Submit handler owns navigation
+    if (!isUserLoading && user) {
+      if (!user.emailVerified) {
+        router.replace('/auth/verify-email');
+      } else {
+        router.replace('/feed');
+      }
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || (user && !isSubmitting.current)) return null;
+
   async function onCreatorSubmit(values: z.infer<typeof creatorFormSchema>) {
     setIsLoading(true);
+    isSubmitting.current = true;
     try {
+      // Persist role and instagram BEFORE creating the account.
+      // createUserWithEmailAndPassword triggers onAuthStateChanged which can
+      // cause the redirect useEffect to fire — the data must already be in
+      // localStorage by then.
+      localStorage.setItem('signupRole', 'creator');
+      // Normalise the instagram value: strip leading @, extract username from URL
+      let igValue = values.instagramUrl.trim();
+      if (igValue.includes('instagram.com/')) {
+        const match = igValue.match(/instagram\.com\/([^/?]+)/);
+        igValue = match ? match[1] : igValue;
+      } else {
+        igValue = igValue.replace(/^@/, '');
+      }
+      localStorage.setItem('signupInstagram', igValue);
+
       await setPersistence(auth, browserLocalPersistence);
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
@@ -108,21 +136,14 @@ function SignupContent() {
       const sendOtp = httpsCallable(functions, 'sendOtp');
       await sendOtp({ uid: user.uid });
 
-      // Store the intended role and instagram URL for after email verification
-      localStorage.setItem('signupRole', 'creator');
-      // Normalise the instagram value: strip leading @, extract username from URL
-      let igValue = values.instagramUrl.trim();
-      if (igValue.includes('instagram.com/')) {
-        const match = igValue.match(/instagram\.com\/([^/?]+)/);
-        igValue = match ? match[1] : igValue;
-      } else {
-        igValue = igValue.replace(/^@/, '');
-      }
-      localStorage.setItem('signupInstagram', igValue);
-      router.push(`/auth/verify-email`);
+      router.push('/auth/verify-email');
 
     } catch (error: any) {
       console.error('Creator signup failed:', error);
+      isSubmitting.current = false;
+      // Clean up localStorage on failure — account wasn't created
+      localStorage.removeItem('signupRole');
+      localStorage.removeItem('signupInstagram');
       if (error.code === 'auth/email-already-in-use') {
         toast({
           variant: 'destructive',
@@ -143,7 +164,11 @@ function SignupContent() {
 
   async function onBusinessSubmit(values: z.infer<typeof businessFormSchema>) {
     setIsLoading(true);
+    isSubmitting.current = true;
     try {
+      // Persist role BEFORE creating the account (same reason as creator submit).
+      localStorage.setItem('signupRole', 'business');
+
       await setPersistence(auth, browserLocalPersistence);
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
@@ -155,12 +180,12 @@ function SignupContent() {
       const sendOtp = httpsCallable(functions, 'sendOtp');
       await sendOtp({ uid: user.uid });
 
-      // Store the intended role for after email verification
-      localStorage.setItem('signupRole', 'business');
       router.push('/auth/verify-email');
 
     } catch (error: any) {
       console.error('Business signup failed:', error);
+      isSubmitting.current = false;
+      localStorage.removeItem('signupRole');
       if (error.code === 'auth/email-already-in-use') {
         toast({
           variant: 'destructive',
