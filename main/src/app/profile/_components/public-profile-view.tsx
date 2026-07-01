@@ -1,6 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useUser, useFirestore } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   BadgeCheck,
   MapPin,
@@ -244,7 +250,60 @@ function StaticCampaignPortfolio({ campaigns, totalViews = 0, totalEngagements =
 
 export function PublicProfileView({ data }: { data: PublicProfileData }) {
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const isLoggedIn = !isUserLoading && !!user;
+  const isOwnProfile = isLoggedIn && user.uid === data.creatorId;
   const [activeAccountTab, setActiveAccountTab] = useState<string>('');
+
+  const [isMessageOpen, setIsMessageOpen] = useState(false);
+  const [messageSubject, setMessageSubject] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendMessage = async () => {
+    if (!user || !firestore) return;
+    setIsSending(true);
+    try {
+      const requestsRef = collection(firestore, `users/${data.creatorId}/collaborationRequests`);
+      await addDoc(requestsRef, {
+        fromUserId: user.uid,
+        fromUserName: user.displayName || 'Unknown User',
+        toUserId: data.creatorId,
+        subject: messageSubject,
+        body: messageBody,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+      
+      const notificationsRef = collection(firestore, `users/${data.creatorId}/notifications`);
+      await addDoc(notificationsRef, {
+        userId: data.creatorId,
+        type: 'new_message',
+        title: 'New Collaboration Request',
+        message: `${user.displayName || 'A brand'} sent you a message: ${messageSubject}`,
+        isRead: false,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({
+        title: 'Message sent!',
+        description: `Your message has been sent to ${data.name}.`,
+      });
+      setIsMessageOpen(false);
+      setMessageSubject('');
+      setMessageBody('');
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to send message.',
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const socialLinks = data.platformLinks?.map((link: string) => {
     const { Icon, name } = getSocialIcon(link);
@@ -328,9 +387,55 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
                     <Share2 className="h-4 w-4" />
                     Share
                   </Button>
-                  <Button asChild size="sm">
-                    <Link href="/signup">Collaborate on Advize</Link>
-                  </Button>
+                  {isLoggedIn ? (
+                    isOwnProfile ? (
+                      <Button asChild size="sm">
+                        <Link href="/feed">Go to Dashboard</Link>
+                      </Button>
+                    ) : (
+                      <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm">Message Creator</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Message {data.name}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="subject">Subject</Label>
+                              <Input 
+                                id="subject" 
+                                placeholder="e.g., Collaboration Inquiry" 
+                                value={messageSubject}
+                                onChange={(e) => setMessageSubject(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="message">Message</Label>
+                              <Textarea 
+                                id="message" 
+                                placeholder="Hi, I'd like to work with you on a campaign..." 
+                                rows={4}
+                                value={messageBody}
+                                onChange={(e) => setMessageBody(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsMessageOpen(false)}>Cancel</Button>
+                            <Button onClick={handleSendMessage} disabled={isSending || !messageSubject.trim() || !messageBody.trim()}>
+                              {isSending ? 'Sending...' : 'Send Message'}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )
+                  ) : (
+                    <Button asChild size="sm">
+                      <Link href="/signup">Collaborate on Advize</Link>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -427,16 +532,42 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
             </CardContent>
           </Card>
 
-          {/* CTA Card */}
+          {/* CTA Card — content differs for logged-in vs. guest visitors */}
           <Card className="shadow-lg border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
             <CardContent className="p-6 text-center space-y-4">
-              <h3 className="text-lg font-bold">Want to collaborate?</h3>
-              <p className="text-sm text-muted-foreground">
-                Join Advize to connect with {data.name} and other top creators for brand campaigns.
-              </p>
-              <Button asChild className="w-full shadow-lg shadow-primary/20">
-                <Link href="/signup">Sign Up on Advize</Link>
-              </Button>
+              {isLoggedIn ? (
+                isOwnProfile ? (
+                  <>
+                    <h3 className="text-lg font-bold">Ready to work together?</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Browse open campaigns on Advize and start collaborating with top brands.
+                    </p>
+                    <Button asChild className="w-full shadow-lg shadow-primary/20">
+                      <Link href="/feed">Browse Campaigns</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-bold">Want to collaborate?</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Send a message directly to {data.name} to discuss potential campaigns.
+                    </p>
+                    <Button className="w-full shadow-lg shadow-primary/20" onClick={() => setIsMessageOpen(true)}>
+                      Message {data.name}
+                    </Button>
+                  </>
+                )
+              ) : (
+                <>
+                  <h3 className="text-lg font-bold">Want to collaborate?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Join Advize to connect with {data.name} and other top creators for brand campaigns.
+                  </p>
+                  <Button asChild className="w-full shadow-lg shadow-primary/20">
+                    <Link href="/signup">Sign Up on Advize</Link>
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -28,6 +28,13 @@ match /users/{userId}/notifications/{notificationId} {
   allow update, delete: if request.auth.uid == userId; // Only owner can modify/delete
 }
 
+// COLLABORATION REQUESTS: Allow any authenticated user to create
+match /users/{userId}/collaborationRequests/{requestId} {
+  allow read: if request.auth != null;
+  allow create: if request.auth != null; // Allow businesses/creators to send requests
+  allow update, delete: if request.auth.uid == userId; // Only owner can modify/delete
+}
+
    match /campaigns/{campaignId} {
   allow read: if true;
   // Business owner can do anything

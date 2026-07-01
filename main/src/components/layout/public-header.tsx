@@ -20,9 +20,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { doc, getDoc, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import type { Campaign, Submission } from '@/lib/types';
+import type { Campaign, Submission, Notification, CollaborationRequest } from '@/lib/types';
 
 
 const navLinks = [
@@ -115,6 +115,49 @@ export function PublicHeader() {
       }));
   }, [submissions, rawCampaigns, userRole]);
 
+  // Creator queries
+  const creatorNotificationsQuery = useMemoFirebase(
+    () => (user && userRole === 'creator' && firestore) ? query(collection(firestore, `users/${user.uid}/notifications`), orderBy('createdAt', 'desc')) : null,
+    [user, userRole, firestore]
+  );
+  const { data: creatorNotifications } = useCollection<Notification>(creatorNotificationsQuery);
+
+  const pendingRequestsQuery = useMemoFirebase(
+    () => (user && userRole === 'creator' && firestore) ? query(collection(firestore, `users/${user.uid}/collaborationRequests`), where('status', '==', 'pending')) : null,
+    [user, userRole, firestore]
+  );
+  const { data: pendingRequests } = useCollection<CollaborationRequest>(pendingRequestsQuery);
+
+  const creatorUnreadCount = useMemo(() => {
+    const unreadNotifications = creatorNotifications?.filter(n => !n.isRead).length || 0;
+    const pendingCollabRequests = pendingRequests?.length || 0;
+    return unreadNotifications + pendingCollabRequests;
+  }, [creatorNotifications, pendingRequests]);
+
+  const handleMarkAllRead = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !firestore) return;
+
+    try {
+      const unreadNotifs = creatorNotifications?.filter(n => !n.isRead) || [];
+      const promises = unreadNotifs.map(n => 
+        updateDoc(doc(firestore, `users/${user.uid}/notifications`, n.id), { isRead: true })
+      );
+      await Promise.all(promises);
+      toast({
+        title: "Marked as read",
+        description: "Your notifications have been marked as read."
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to mark notifications as read.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleCreateStore = () => {
     if (user) {
@@ -372,6 +415,7 @@ export function PublicHeader() {
             </>
           ) : (
             <>
+              {/* Business Notifications Bell */}
               {userRole === 'business' && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -413,6 +457,52 @@ export function PublicHeader() {
                         You have no new notifications.
                       </div>
                     )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* Creator Notifications Bell */}
+              {userRole === 'creator' && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative hover:bg-primary/10 transition-all duration-200"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {creatorUnreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg animate-pulse">
+                          {creatorUnreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuLabel className="flex items-center justify-between">
+                      <span>Inbox Alerts</span>
+                      {creatorUnreadCount > 0 && (
+                        <Button variant="ghost" size="sm" onClick={handleMarkAllRead} className="h-auto p-1 text-xs text-primary hover:bg-primary/10">
+                          Mark all as read
+                        </Button>
+                      )}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild className="p-0">
+                      <Link href={`/creator/profile/${user.uid}`} className="block w-full p-4 text-wrap hover:bg-accent cursor-pointer">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                            <MessageSquare className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-foreground text-sm">
+                              {creatorUnreadCount > 0 ? `You have ${creatorUnreadCount} new alerts!` : "Inbox is up to date"}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">Click to open your Inbox tab.</p>
+                          </div>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

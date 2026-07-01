@@ -2,8 +2,9 @@
 'use client';
 
 import { useCollection, useFirestore, useUser, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
-import type { Group, Campaign } from "@/lib/types";
+import { collection, query, where, orderBy } from "firebase/firestore";
+import type { Group, Campaign, CollaborationRequest } from "@/lib/types";
+import { CollaborationRequestCard } from "@/app/creator/profile/_components/collaboration-request-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +23,12 @@ export default function CreatorMessagesPage() {
     );
     const { data: groups, isLoading: groupsLoading } = useCollection<Group>(groupsQuery);
     
+    const requestsQuery = useMemoFirebase(
+        () => (user ? query(collection(firestore, `users/${user.uid}/collaborationRequests`), orderBy('createdAt', 'desc')) : null),
+        [user, firestore]
+    );
+    const { data: collaborationRequests, isLoading: requestsLoading } = useCollection<CollaborationRequest>(requestsQuery);
+    
     const campaignIds = useMemo(() => groups?.map(g => g.campaignId) || [], [groups]);
 
     const campaignsQuery = useMemoFirebase(
@@ -35,7 +42,7 @@ export default function CreatorMessagesPage() {
         return new Map(campaigns.map(c => [c.id, c]));
     }, [campaigns]);
 
-    const isLoading = isUserLoading || groupsLoading || (campaignIds.length > 0 && campaignsLoading);
+    const isLoading = isUserLoading || groupsLoading || (campaignIds.length > 0 && campaignsLoading) || requestsLoading;
 
     return (
         <div className="w-full max-w-4xl mx-auto space-y-6">
@@ -47,7 +54,7 @@ export default function CreatorMessagesPage() {
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold font-headline">Messages</h1>
-                    <p className="text-muted-foreground">Your campaign chat groups.</p>
+                    <p className="text-muted-foreground">Your campaign group chats and direct messages.</p>
                 </div>
             </div>
 
@@ -95,6 +102,36 @@ export default function CreatorMessagesPage() {
                              <Button asChild variant="link" className="mt-4">
                                 <Link href="/campaigns">Explore Campaigns</Link>
                             </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Direct Messages</CardTitle>
+                    <CardDescription>Messages from businesses and brands.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {isLoading ? (
+                        Array.from({ length: 2 }).map((_, i) => (
+                            <div key={i} className="flex items-start gap-4 p-4 border rounded-lg">
+                                <Skeleton className="h-10 w-10 rounded-full" />
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton className="h-5 w-1/4" />
+                                    <Skeleton className="h-4 w-3/4" />
+                                </div>
+                            </div>
+                        ))
+                    ) : collaborationRequests && collaborationRequests.length > 0 ? (
+                        collaborationRequests.map((request) => (
+                            <CollaborationRequestCard key={request.id} request={request} />
+                        ))
+                    ) : (
+                        <div className="text-center py-10 text-muted-foreground">
+                            <MessageSquare className="mx-auto h-12 w-12" />
+                            <p className="mt-4 font-semibold">No direct messages yet.</p>
+                            <p className="mt-1 text-sm">When brands reach out, their messages will appear here.</p>
                         </div>
                     )}
                 </CardContent>
