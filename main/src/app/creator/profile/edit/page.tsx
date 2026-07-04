@@ -25,16 +25,32 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useState, useRef } from 'react';
-import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { generateSlug } from '@/lib/username-utils';
+import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select';
+import { NICHES, CREATOR_TYPES } from '@/lib/creator-niches';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   email: z.string().email('Invalid email address'),
-  bio: z.string().max(300, 'Bio is too long').optional(),
-  location: z.string().optional(),
-  categories: z.array(z.string()).optional(),
+  bio: z.string().max(500, 'Bio is too long').optional(),
+  // Location split into 3 required fields
+  city: z.string().min(1, 'City is required'),
+  state: z.string().min(1, 'State / Province is required'),
+  country: z.string().min(1, 'Country is required'),
+  // Age — required
+  age: z.coerce
+    .number({ invalid_type_error: 'Age is required' })
+    .min(13, 'You must be at least 13 years old')
+    .max(120, 'Please enter a valid age'),
+  // Niche — 1 to 3, required
+  categories: z
+    .array(z.string())
+    .min(1, 'Please select at least 1 niche')
+    .max(3, 'You can select up to 3 niches'),
+  // Creator type — required
+  creatorType: z.string().min(1, 'Please select a creator type'),
+  // Social links
   instagramUrls: z.array(z.string().url('Please enter a valid URL')).optional(),
   youtubeUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
   twitterUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
@@ -70,8 +86,12 @@ export default function EditCreatorProfilePage() {
       name: '',
       email: '',
       bio: '',
-      location: '',
+      city: '',
+      state: '',
+      country: '',
+      age: undefined,
       categories: [],
+      creatorType: '',
       instagramUrls: [],
       youtubeUrl: '',
       twitterUrl: '',
@@ -79,14 +99,14 @@ export default function EditCreatorProfilePage() {
     mode: 'onChange',
   });
 
-  const [categoryInput, setCategoryInput] = useState('');
-  const categories = form.watch('categories') || [];
   const [isInitialSetup, setIsInitialSetup] = useState(false);
   const [instaInput, setInstaInput] = useState('');
   const instagramUrls = form.watch('instagramUrls') || [];
+  const categories = form.watch('categories') || [];
+  const creatorTypeValue = form.watch('creatorType');
 
   useEffect(() => {
-    if (creatorProfileData && !creatorProfileData.bio && !creatorProfileData.location) {
+    if (creatorProfileData && !creatorProfileData.bio && !creatorProfileData.city) {
       setIsInitialSetup(true);
     } else {
       setIsInitialSetup(false);
@@ -98,7 +118,6 @@ export default function EditCreatorProfilePage() {
       setAvatarPreview(userData.logoUrl);
     }
   }, [userData]);
-
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0 || !user) {
@@ -118,26 +137,14 @@ export default function EditCreatorProfilePage() {
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDocumentNonBlocking(userDocRef, { logoUrl: downloadURL }, { merge: true });
 
-      toast({ title: "Avatar updated successfully!" });
+      toast({ title: 'Avatar updated successfully!' });
     } catch (error) {
-      console.error("Upload failed", error);
-      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload your avatar." });
+      console.error('Upload failed', error);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload your avatar.' });
     } finally {
       setIsUploading(false);
     }
   };
-
-  const handleAddCategory = () => {
-    const trimmedInput = categoryInput.trim();
-    if (trimmedInput && !categories.includes(trimmedInput)) {
-      form.setValue('categories', [...categories, trimmedInput]);
-      setCategoryInput('');
-    }
-  };
-
-  const handleRemoveCategory = (category: string) => {
-    form.setValue('categories', categories.filter(p => p !== category));
-  }
 
   useEffect(() => {
     if (creatorProfileData && userData) {
@@ -146,8 +153,12 @@ export default function EditCreatorProfilePage() {
         name: userData.name || '',
         email: userData.email || '',
         bio: creatorProfileData.bio || '',
-        location: creatorProfileData.location || '',
+        city: creatorProfileData.city || '',
+        state: creatorProfileData.state || '',
+        country: creatorProfileData.country || '',
+        age: creatorProfileData.age ?? undefined,
         categories: creatorProfileData.categories || [],
+        creatorType: creatorProfileData.creatorType || '',
         instagramUrls: platformLinks.filter((l: string) => l.includes('instagram.com')),
         youtubeUrl: platformLinks.find((l: string) => l.includes('youtube.com')) || '',
         twitterUrl: platformLinks.find((l: string) => l.includes('twitter.com') || l.includes('x.com')) || '',
@@ -158,10 +169,9 @@ export default function EditCreatorProfilePage() {
     }
   }, [creatorProfileData, userData, form]);
 
-
   async function onSubmit(data: ProfileFormValues) {
     if (!user) {
-      toast({ variant: "destructive", title: "Error", description: "You must be logged in." });
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
       return;
     }
 
@@ -178,8 +188,12 @@ export default function EditCreatorProfilePage() {
     await setDocumentNonBlocking(profileDocRef, {
       bio: data.bio,
       platformLinks,
-      location: data.location,
+      city: data.city,
+      state: data.state,
+      country: data.country,
+      age: data.age,
       categories: data.categories,
+      creatorType: data.creatorType,
     }, { merge: true });
 
     // Clean up analytics entries for removed Instagram accounts
@@ -203,7 +217,6 @@ export default function EditCreatorProfilePage() {
     if (!username) {
       try {
         const slug = generateSlug(data.name);
-        // Find a unique slug by checking the `usernames` collection
         let candidate = slug;
         let suffix = 2;
         while (true) {
@@ -220,15 +233,12 @@ export default function EditCreatorProfilePage() {
           candidate = `${slug}_${suffix}`;
           suffix++;
         }
-        // Atomically claim the username
         const { writeBatch } = await import('firebase/firestore');
         const batch = writeBatch(firestore);
         batch.set(doc(firestore, 'users', user.uid), { username }, { merge: true });
         batch.set(doc(firestore, 'usernames', username!), { uid: user.uid });
         await batch.commit();
       } catch (err) {
-        // If rules aren't deployed yet, username generation fails silently.
-        // The profile data is still saved; username will be claimed on next save.
         console.warn('[username] Could not claim username — deploy firestore.rules to enable this feature:', err);
         username = null;
       }
@@ -260,7 +270,7 @@ export default function EditCreatorProfilePage() {
           <Skeleton className="h-10 w-32" />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -284,12 +294,14 @@ export default function EditCreatorProfilePage() {
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* ── Avatar & Public Profile ── */}
           <Card>
             <CardHeader>
-              <CardTitle>Avatar & Public Profile</CardTitle>
-              <CardDescription>This is how you'll appear to brands.</CardDescription>
+              <CardTitle>Avatar &amp; Public Profile</CardTitle>
+              <CardDescription>This is how you&apos;ll appear to brands.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Avatar upload */}
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <input
@@ -327,6 +339,7 @@ export default function EditCreatorProfilePage() {
                 </div>
               </div>
 
+              {/* Name */}
               <FormField
                 control={form.control}
                 name="name"
@@ -340,6 +353,8 @@ export default function EditCreatorProfilePage() {
                   </FormItem>
                 )}
               />
+
+              {/* Email */}
               <FormField
                 control={form.control}
                 name="email"
@@ -354,6 +369,8 @@ export default function EditCreatorProfilePage() {
                   </FormItem>
                 )}
               />
+
+              {/* Bio */}
               <FormField
                 control={form.control}
                 name="bio"
@@ -371,52 +388,124 @@ export default function EditCreatorProfilePage() {
                   </FormItem>
                 )}
               />
+
+              {/* Creator Type */}
               <FormField
                 control={form.control}
-                name="location"
+                name="creatorType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location</FormLabel>
+                    <FormLabel>
+                      Creator Type <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Mumbai, India" {...field} />
+                      <SearchableMultiSelect
+                        options={CREATOR_TYPES}
+                        value={field.value ? [field.value] : []}
+                        onChange={(val) => field.onChange(val[0] ?? '')}
+                        placeholder="Search creator types..."
+                        single
+                      />
                     </FormControl>
+                    <FormDescription>Select the type that best describes you.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* Niche (categories) */}
               <FormField
                 control={form.control}
                 name="categories"
-                render={() => (
+                render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Categories</FormLabel>
+                    <FormLabel>
+                      Niche <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={categoryInput}
-                          onChange={e => setCategoryInput(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddCategory();
-                            }
-                          }}
-                          placeholder="e.g., Fashion, Lifestyle"
-                        />
-                        <Button type="button" onClick={handleAddCategory}>Add</Button>
-                      </div>
+                      <SearchableMultiSelect
+                        options={NICHES}
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                        placeholder="Search niches..."
+                        maxSelected={3}
+                        maxSelectedMessage="You can select up to 3 niches."
+                      />
                     </FormControl>
-                    <FormDescription>Add tags that describe your content niche.</FormDescription>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {categories.map(category => (
-                        <Badge key={category} variant="secondary">
-                          {category}
-                          <button type="button" onClick={() => handleRemoveCategory(category)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
+                    <FormDescription>Select 1–3 niches that describe your content.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Location — City / State / Country */}
+              <div>
+                <p className="text-sm font-medium mb-2">
+                  Location <span className="text-destructive">*</span>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">City</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Mumbai" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">State / Province</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Maharashtra" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Country</FormLabel>
+                        <FormControl>
+                          <Input placeholder="India" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Age */}
+              <FormField
+                control={form.control}
+                name="age"
+                render={({ field }) => (
+                  <FormItem className="max-w-[160px]">
+                    <FormLabel>
+                      Age <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={13}
+                        max={120}
+                        placeholder="e.g. 24"
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -424,12 +513,14 @@ export default function EditCreatorProfilePage() {
             </CardContent>
           </Card>
 
+          {/* ── Social Links ── */}
           <Card>
             <CardHeader>
               <CardTitle>Social Links</CardTitle>
               <CardDescription>Provide links to your main social media profiles.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Instagram accounts */}
               <FormField
                 control={form.control}
                 name="instagramUrls"
@@ -489,6 +580,8 @@ export default function EditCreatorProfilePage() {
                   </FormItem>
                 )}
               />
+
+              {/* YouTube */}
               <FormField
                 control={form.control}
                 name="youtubeUrl"
@@ -502,6 +595,8 @@ export default function EditCreatorProfilePage() {
                   </FormItem>
                 )}
               />
+
+              {/* Twitter / X */}
               <FormField
                 control={form.control}
                 name="twitterUrl"

@@ -832,12 +832,39 @@ export default function PublicCreatorProfilePage() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
+            {/* Creator Type */}
+            {creatorProfile.creatorType && (
+              <Badge variant="default" className="bg-primary/10 text-primary border-primary/30">
+                {creatorProfile.creatorType}
+              </Badge>
+            )}
+            {/* Niche badges */}
             {(creatorProfile.categories || []).map((cat: string) => (
               <Badge key={cat} variant="secondary">{cat}</Badge>
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-            {creatorProfile.location && <div className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {creatorProfile.location}</div>}
+            {/* Structured location */}
+            {(creatorProfile.city || creatorProfile.state || creatorProfile.country) && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" />
+                {[creatorProfile.city, creatorProfile.state, creatorProfile.country].filter(Boolean).join(', ')}
+              </div>
+            )}
+            {/* Fallback to legacy location string */}
+            {!creatorProfile.city && creatorProfile.location && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" />
+                {creatorProfile.location}
+              </div>
+            )}
+            {/* Age */}
+            {creatorProfile.age && (
+              <div className="flex items-center gap-1.5">
+                <Star className="h-4 w-4" />
+                {creatorProfile.age} yrs
+              </div>
+            )}
           </div>
         </div>
       </Card>

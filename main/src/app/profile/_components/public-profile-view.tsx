@@ -57,7 +57,14 @@ export interface PublicProfileData {
   bannerUrl?: string;
   bio?: string;
   categories?: string[];
+  creatorType?: string;
+  // Structured location (new)
+  city?: string;
+  state?: string;
+  country?: string;
+  // Legacy single-string location
   location?: string;
+  age?: number;
   platformLinks?: string[];
   instagramAnalyticsMulti?: Record<string, InstagramAnalytics>;
   // Portfolio
@@ -441,12 +448,38 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
+            {/* Creator Type */}
+            {data.creatorType && (
+              <Badge variant="default" className="bg-primary/10 text-primary border-primary/30">
+                {data.creatorType}
+              </Badge>
+            )}
+            {/* Niche badges */}
             {(data.categories || []).map((cat: string) => (
               <Badge key={cat} variant="secondary">{cat}</Badge>
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-            {data.location && <div className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {data.location}</div>}
+            {/* Structured location (new fields) */}
+            {(data.city || data.state || data.country) && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" />
+                {[data.city, data.state, data.country].filter(Boolean).join(', ')}
+              </div>
+            )}
+            {/* Fallback to legacy location string */}
+            {!data.city && data.location && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" />
+                {data.location}
+              </div>
+            )}
+            {/* Age */}
+            {data.age && (
+              <div className="flex items-center gap-1.5 font-medium">
+                {data.age} yrs
+              </div>
+            )}
           </div>
         </div>
       </Card>

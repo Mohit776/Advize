@@ -42,7 +42,25 @@ export type User = {
   email: string;
   role: 'creator' | 'business';
   logoUrl?: string;
+  username?: string;
 }
+
+export type CreatorProfile = {
+  id: string;
+  userId: string;
+  bio?: string;
+  // Location (split fields — replaces legacy single `location` string)
+  city: string;
+  state: string;
+  country: string;
+  age: number;
+  /** Content niche tags — 1 to 3 items */
+  categories: string[];
+  /** Single creator type from CREATOR_TYPES list */
+  creatorType: string;
+  platformLinks?: string[];
+  instagramAnalyticsMulti?: Record<string, any>;
+};
 
 export type BusinessProfile = {
   id: string;

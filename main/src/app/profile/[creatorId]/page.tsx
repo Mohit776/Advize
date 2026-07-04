@@ -71,7 +71,14 @@ async function getPublicProfileData(slug: string): Promise<PublicProfileData | n
     bannerUrl: creatorProfileData.bannerUrl || undefined,
     bio: creatorProfileData.bio || undefined,
     categories: creatorProfileData.categories || [],
+    creatorType: creatorProfileData.creatorType || undefined,
+    // Structured location fields (new)
+    city: creatorProfileData.city || undefined,
+    state: creatorProfileData.state || undefined,
+    country: creatorProfileData.country || undefined,
+    // Legacy fallback
     location: creatorProfileData.location || undefined,
+    age: creatorProfileData.age || undefined,
     platformLinks: creatorProfileData.platformLinks || [],
     instagramAnalyticsMulti: creatorProfileData.instagramAnalyticsMulti || {},
     featuredPosts: creatorProfileData.featuredPosts || [],
