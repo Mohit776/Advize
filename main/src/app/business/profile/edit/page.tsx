@@ -50,6 +50,9 @@ export default function EditBusinessProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
   const businessProfileRef = useMemoFirebase(
     () => (user ? doc(firestore, `users/${user.uid}/businessProfile`, user.uid) : null),
@@ -96,6 +99,9 @@ export default function EditBusinessProfilePage() {
       if (userData.logoUrl) {
         setAvatarPreview(userData.logoUrl);
       }
+      if (businessProfileData.bannerUrl) {
+        setBannerPreview(businessProfileData.bannerUrl);
+      }
     }
   }, [businessProfileData, userData, form]);
 
@@ -123,6 +129,33 @@ export default function EditBusinessProfilePage() {
       toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload your avatar." });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !user) {
+      return;
+    }
+    const file = event.target.files[0];
+    setIsBannerUploading(true);
+
+    const storageRef = ref(storage, `profile-banners/${user.uid}/${file.name}`);
+
+    try {
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      setBannerPreview(downloadURL);
+
+      const profileDocRef = doc(firestore, `users/${user.uid}/businessProfile`, user.uid);
+      await setDocumentNonBlocking(profileDocRef, { bannerUrl: downloadURL }, { merge: true });
+
+      toast({ title: 'Banner updated successfully!' });
+    } catch (error) {
+      console.error('Upload failed', error);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload your banner.' });
+    } finally {
+      setIsBannerUploading(false);
     }
   };
 
@@ -235,6 +268,40 @@ export default function EditBusinessProfilePage() {
                   <Button type="button" size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                     Change Avatar
                   </Button>
+                </div>
+              </div>
+
+              {/* Banner upload */}
+              <div className="flex flex-col gap-4">
+                <div className="space-y-1">
+                  <h3 className="font-semibold">Brand Banner</h3>
+                  <p className="text-sm text-muted-foreground">Recommended size: 1200x400px (PNG or JPG).</p>
+                </div>
+                <div className="relative w-full h-40 rounded-xl bg-muted overflow-hidden group cursor-pointer" onClick={() => bannerInputRef.current?.click()}>
+                  <input
+                    type="file"
+                    ref={bannerInputRef}
+                    onChange={handleBannerUpload}
+                    accept="image/png, image/jpeg, image/gif"
+                    className="hidden"
+                  />
+                  {bannerPreview ? (
+                    <Image src={bannerPreview} alt="Banner Preview" fill style={{ objectFit: 'cover' }} />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                      <UploadCloud className="h-8 w-8 mb-2" />
+                      <span>Upload Banner</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <UploadCloud className="h-8 w-8 text-white mb-2" />
+                    <span className="text-white font-medium">Change Banner</span>
+                  </div>
+                  {isBannerUploading && (
+                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-white" />
+                    </div>
+                  )}
                 </div>
               </div>
 

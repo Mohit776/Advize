@@ -218,9 +218,20 @@ function BusinessProfileContent() {
     <div className="w-full mx-auto space-y-6">
       {/* Header Section */}
       <Card className="overflow-hidden shadow-lg border-white/10 bg-card">
+        <div className={`relative h-36 md:h-48 w-full bg-accent/10`}>
+          <Image
+            src={businessProfile?.bannerUrl || "https://picsum.photos/seed/business-banner/1200/400"}
+            alt="Brand Banner"
+            fill
+            priority
+            sizes="100vw"
+            style={{ objectFit: 'cover' }}
+            data-ai-hint="business banner"
+          />
+        </div>
         <div className="p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
-            <div className={`relative h-24 w-24 md:h-32 md:w-32 rounded-lg border-4 border-background overflow-hidden shadow-lg flex-shrink-0`}>
+          <div className="relative flex flex-col sm:flex-row sm:items-end sm:space-x-6 -mt-[4.5rem]">
+            <div className={`relative h-24 w-24 md:h-32 md:w-32 rounded-lg border-4 border-background overflow-hidden shadow-lg flex-shrink-0 bg-background`}>
               <Image
                 src={userData?.logoUrl || "https://picsum.photos/seed/brand-logo/200/200"}
                 alt="Brand Logo"
