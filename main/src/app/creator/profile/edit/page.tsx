@@ -48,8 +48,11 @@ const profileFormSchema = z.object({
     .array(z.string())
     .min(1, 'Please select at least 1 niche')
     .max(3, 'You can select up to 3 niches'),
-  // Creator type — required
-  creatorType: z.string().min(1, 'Please select a creator type'),
+  // Creator type — up to 2 allowed
+  creatorType: z
+    .array(z.string())
+    .min(1, 'Please select at least 1 creator type')
+    .max(2, 'You can select up to 2 creator types'),
   // Social links
   instagramUrls: z.array(z.string().url('Please enter a valid URL')).optional(),
   youtubeUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
@@ -91,7 +94,7 @@ export default function EditCreatorProfilePage() {
       country: '',
       age: undefined,
       categories: [],
-      creatorType: '',
+      creatorType: [],
       instagramUrls: [],
       youtubeUrl: '',
       twitterUrl: '',
@@ -158,7 +161,9 @@ export default function EditCreatorProfilePage() {
         country: creatorProfileData.country || '',
         age: creatorProfileData.age ?? undefined,
         categories: creatorProfileData.categories || [],
-        creatorType: creatorProfileData.creatorType || '',
+        creatorType: Array.isArray(creatorProfileData.creatorType)
+          ? creatorProfileData.creatorType
+          : (creatorProfileData.creatorType ? [creatorProfileData.creatorType] : []),
         instagramUrls: platformLinks.filter((l: string) => l.includes('instagram.com')),
         youtubeUrl: platformLinks.find((l: string) => l.includes('youtube.com')) || '',
         twitterUrl: platformLinks.find((l: string) => l.includes('twitter.com') || l.includes('x.com')) || '',
@@ -401,10 +406,11 @@ export default function EditCreatorProfilePage() {
                     <FormControl>
                       <SearchableMultiSelect
                         options={CREATOR_TYPES}
-                        value={field.value ? [field.value] : []}
-                        onChange={(val) => field.onChange(val[0] ?? '')}
+                        value={field.value ?? []}
+                        onChange={field.onChange}
                         placeholder="Search creator types..."
-                        single
+                        maxSelected={2}
+                        maxSelectedMessage="You can select up to 2 creator types."
                       />
                     </FormControl>
                     <FormDescription>Select the type that best describes you.</FormDescription>

@@ -835,7 +835,7 @@ export default function PublicCreatorProfilePage() {
             {/* Creator Type */}
             {creatorProfile.creatorType && (
               <Badge variant="default" className="bg-primary/10 text-primary border-primary/30">
-                {creatorProfile.creatorType}
+                {Array.isArray(creatorProfile.creatorType) ? creatorProfile.creatorType.join(' • ') : creatorProfile.creatorType}
               </Badge>
             )}
             {/* Niche badges */}

@@ -56,8 +56,8 @@ export type CreatorProfile = {
   age: number;
   /** Content niche tags — 1 to 3 items */
   categories: string[];
-  /** Single creator type from CREATOR_TYPES list */
-  creatorType: string;
+  /** Creator type from CREATOR_TYPES list */
+  creatorType: string | string[];
   platformLinks?: string[];
   instagramAnalyticsMulti?: Record<string, any>;
 };

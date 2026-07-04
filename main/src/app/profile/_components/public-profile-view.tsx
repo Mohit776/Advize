@@ -57,7 +57,7 @@ export interface PublicProfileData {
   bannerUrl?: string;
   bio?: string;
   categories?: string[];
-  creatorType?: string;
+  creatorType?: string | string[];
   // Structured location (new)
   city?: string;
   state?: string;
@@ -455,7 +455,7 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
             {/* Creator Type */}
             {data.creatorType && (
               <Badge variant="default" className="bg-primary/10 text-primary border-primary/30">
-                {data.creatorType}
+                {Array.isArray(data.creatorType) ? data.creatorType.join(' • ') : data.creatorType}
               </Badge>
             )}
             {/* Niche badges */}
