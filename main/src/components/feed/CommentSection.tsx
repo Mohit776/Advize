@@ -101,52 +101,49 @@ export function CommentSection({ postId, isOpen }: CommentSectionProps) {
   return (
     <div
       id={`comments-${postId}`}
-      className="border-t border-border/40 mt-1 pt-4 px-4 pb-4 space-y-4 animate-in slide-in-from-top-2 duration-200"
+      className="border-t border-white/[0.05] mt-1 pt-4 px-4 pb-4 space-y-4 animate-in slide-in-from-top-2 duration-200 bg-black/20"
     >
       {/* Comment list */}
       <div className="space-y-3 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-border">
         {comments.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground/60">
-            <MessageCircle className="h-8 w-8" />
-            <p className="text-sm">No comments yet — be the first!</p>
+          <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground/50">
+            <MessageCircle className="h-7 w-7" />
+            <p className="text-xs font-medium">Start the conversation</p>
           </div>
         ) : (
           comments.map((c) => (
-            <div key={c.id} className="flex gap-3 group">
-              <Avatar className="h-7 w-7 flex-shrink-0 mt-0.5">
+            <div key={c.id} className="flex gap-2.5 group">
+              <Avatar className="h-7 w-7 flex-shrink-0 mt-0.5 ring-1 ring-white/10">
                 <AvatarImage src={c.authorAvatar} />
-                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">
                   {c.authorName?.[0]?.toUpperCase() ?? '?'}
                 </AvatarFallback>
               </Avatar>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-semibold text-foreground truncate">
-                    {c.authorName}
-                  </span>
-                  <span
-                    className={cn(
-                      'text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wide',
+                {/* Comment bubble */}
+                <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl rounded-tl-sm px-3 py-2 inline-block max-w-full">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-xs font-semibold text-foreground truncate">{c.authorName}</span>
+                    <span className={cn(
+                      'text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide',
                       c.authorRole === 'business'
                         ? 'bg-amber-500/15 text-amber-400'
                         : 'bg-primary/15 text-primary'
-                    )}
-                  >
-                    {c.authorRole}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
-                    {formatTime(c.createdAt)}
-                  </span>
+                    )}>
+                      {c.authorRole}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/85 break-words whitespace-pre-wrap leading-relaxed">{renderInlineText(c.text)}</p>
                 </div>
-                <p className="text-sm text-foreground/80 mt-0.5 break-words whitespace-pre-wrap">{renderInlineText(c.text)}</p>
+                <span className="text-[10px] text-muted-foreground/50 mt-1 ml-1 block">{formatTime(c.createdAt)}</span>
               </div>
 
               {/* Delete button — only for comment author */}
               {user?.uid === c.authorId && (
                 <button
                   onClick={() => handleDelete(c.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex-shrink-0"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 mt-1 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 flex-shrink-0"
                   aria-label="Delete comment"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -159,10 +156,10 @@ export function CommentSection({ postId, isOpen }: CommentSectionProps) {
 
       {/* Input row */}
       {user && (
-        <div className="flex gap-2 items-end">
-          <Avatar className="h-7 w-7 flex-shrink-0 mb-1">
+        <div className="flex gap-2.5 items-end">
+          <Avatar className="h-7 w-7 flex-shrink-0 mb-1 ring-1 ring-white/10">
             <AvatarImage src={userAvatar} />
-            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+            <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">
               {userName?.[0]?.toUpperCase() ?? '?'}
             </AvatarFallback>
           </Avatar>
@@ -173,25 +170,26 @@ export function CommentSection({ postId, isOpen }: CommentSectionProps) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Write a comment… (Enter to send)"
+              placeholder="Add a comment…"
               rows={1}
-              className="resize-none min-h-[36px] pr-10 py-2 text-sm bg-muted/40 border-border/40 focus-visible:ring-primary/40 rounded-xl"
+              className="resize-none min-h-[38px] pr-12 py-2.5 text-sm bg-white/[0.04] border-white/[0.08] focus-visible:ring-primary/40 focus-visible:border-primary/30 rounded-xl placeholder:text-muted-foreground/40 transition-all"
             />
+            <Button
+              id={`comment-submit-${postId}`}
+              onClick={handleSubmit}
+              disabled={!text.trim() || isSubmitting}
+              size="icon"
+              variant="ghost"
+              className="absolute right-1.5 bottom-1.5 h-7 w-7 rounded-lg flex-shrink-0 text-primary hover:bg-primary/10 disabled:opacity-30"
+              aria-label="Post comment"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+            </Button>
           </div>
-          <Button
-            id={`comment-submit-${postId}`}
-            onClick={handleSubmit}
-            disabled={!text.trim() || isSubmitting}
-            size="icon"
-            className="h-9 w-9 rounded-xl flex-shrink-0"
-            aria-label="Post comment"
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
         </div>
       )}
     </div>

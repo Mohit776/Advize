@@ -100,20 +100,22 @@ function StaticCampaignPortfolio({ campaigns, totalViews = 0, totalEngagements =
 }) {
   if (!campaigns || campaigns.length === 0) {
     return (
-      <Card>
+      <Card className="glass-card shadow-lg border-white/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5" />
+            <Briefcase className="h-5 w-5 text-muted-foreground" />
             Campaign Portfolio
           </CardTitle>
           <CardDescription>Past brand collaborations and campaigns</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <Briefcase className="mx-auto h-10 w-10 text-muted-foreground" />
-            <h3 className="mt-3 text-base font-medium">No Campaign History Yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Campaigns this creator has participated in will appear here.
+          <div className="flex flex-col items-center justify-center py-12 text-center rounded-2xl bg-white/5 border border-white/5 mx-auto max-w-md my-4">
+            <div className="relative p-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 mb-3 glass-hover cursor-default">
+              <Briefcase className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-bold">No Campaign History Yet</h3>
+            <p className="mt-1 text-sm text-muted-foreground max-w-xs mx-auto">
+              Campaigns this creator has collaborated on will appear here once completed.
             </p>
           </div>
         </CardContent>
@@ -129,20 +131,20 @@ function StaticCampaignPortfolio({ campaigns, totalViews = 0, totalEngagements =
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
+              <Briefcase className="h-5 w-5 text-primary animate-pulse" />
               Campaign Portfolio
             </CardTitle>
             <CardDescription>Past brand collaborations and campaigns</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/30">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="glass bg-green-500/10 text-green-500 border-green-500/30">
               {completedCount} Completed
             </Badge>
             {activeCount > 0 && (
-              <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30">
+              <Badge variant="secondary" className="glass bg-blue-500/10 text-blue-500 border-blue-500/30">
                 {activeCount} Active
               </Badge>
             )}
@@ -152,38 +154,39 @@ function StaticCampaignPortfolio({ campaigns, totalViews = 0, totalEngagements =
       <CardContent>
         {/* Summary Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-          <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-4 text-center">
-            <p className="text-2xl font-bold">{campaigns.length}</p>
+          <div className="rounded-xl glass bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30 p-4 text-center hover:-translate-y-1 transition-transform duration-300">
+            <p className="text-2xl font-bold text-blue-400">{campaigns.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Total Campaigns</p>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 p-4 text-center">
-            <p className="text-2xl font-bold">{completedCount}</p>
+          <div className="rounded-xl glass bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/30 p-4 text-center hover:-translate-y-1 transition-transform duration-300">
+            <p className="text-2xl font-bold text-emerald-400">{completedCount}</p>
             <p className="text-xs text-muted-foreground mt-1">Completed</p>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-4 text-center">
-            <p className="text-2xl font-bold">{platformSet.size}</p>
+          <div className="rounded-xl glass bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border-indigo-500/30 p-4 text-center hover:-translate-y-1 transition-transform duration-300">
+            <p className="text-2xl font-bold text-indigo-400">{platformSet.size}</p>
             <p className="text-xs text-muted-foreground mt-1">Platforms</p>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-pink-500/10 to-rose-500/10 border border-pink-500/20 p-4 text-center">
-            <p className="text-2xl font-bold">{formatNumber(totalViews)}</p>
+          <div className="rounded-xl glass bg-gradient-to-br from-pink-500/10 to-rose-500/10 border-pink-500/30 p-4 text-center hover:-translate-y-1 transition-transform duration-300">
+            <p className="text-2xl font-bold text-pink-400">{formatNumber(totalViews)}</p>
             <p className="text-xs text-muted-foreground mt-1">Total Views</p>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-4 text-center">
-            <p className="text-2xl font-bold">{totalEngagements}</p>
+          <div className="rounded-xl glass bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30 p-4 text-center hover:-translate-y-1 transition-transform duration-300">
+            <p className="text-2xl font-bold text-amber-400">{totalEngagements}</p>
             <p className="text-xs text-muted-foreground mt-1">Engagements</p>
           </div>
         </div>
 
         {/* Campaign Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {campaigns.map((campaign) => {
+          {campaigns.map((campaign, i) => {
             const startDate = campaign.startDate ? new Date(campaign.startDate) : null;
             const endDate = campaign.endDate ? new Date(campaign.endDate) : null;
 
             return (
               <div
                 key={campaign.id}
-                className="group relative rounded-xl border bg-card/50 hover:bg-card/80 transition-all p-4 space-y-3"
+                className="group relative rounded-xl glass-card hover:bg-card/80 hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-300 p-4 space-y-3 animate-fade-in-up"
+                style={{ animationDelay: `${i * 100}ms` }}
               >
                 {/* Brand Header */}
                 <div className="flex items-center gap-3">
@@ -350,10 +353,10 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
   };
 
   return (
-    <div className="w-full mx-auto space-y-6">
+    <div className="w-full mx-auto space-y-8 animate-fade-in">
       {/* Header Section */}
-      <Card className="overflow-hidden shadow-lg border-white/10 bg-card">
-        <div className="relative h-36 md:h-48 w-full bg-accent/10">
+      <Card className="overflow-hidden shadow-2xl border-white/5 bg-card relative">
+        <div className="relative h-48 md:h-64 w-full bg-accent/10">
           <Image
             src={data.bannerUrl || "https://picsum.photos/seed/creator-banner/1200/400"}
             alt="Creator Banner"
@@ -362,10 +365,11 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
             sizes="100vw"
             style={{ objectFit: 'cover' }}
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         </div>
-        <div className="p-4 md:p-6">
-          <div className="relative flex flex-col md:flex-row md:items-end md:gap-6 -mt-[4.5rem]">
-            <div className="relative h-28 w-28 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden shadow-lg flex-shrink-0">
+        <div className="p-4 md:p-8 relative z-10">
+          <div className="relative flex flex-col md:flex-row md:items-end md:gap-8 -mt-20 md:-mt-24">
+            <div className="relative h-32 w-32 md:h-40 md:w-40 rounded-full border-4 border-background overflow-hidden shadow-[0_0_20px_rgba(59,130,246,0.4)] flex-shrink-0 animate-float bg-background">
               <Image
                 src={data.logoUrl || "https://picsum.photos/seed/creator-avatar/200/200"}
                 alt="Creator Avatar"
@@ -439,7 +443,7 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
                       </Dialog>
                     )
                   ) : (
-                    <Button asChild size="sm">
+                    <Button asChild size="sm" className="btn-primary w-full md:w-auto">
                       <Link href="/signup">Collaborate on Advize</Link>
                     </Button>
                   )}
@@ -552,13 +556,17 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
               <CardTitle>Contact & Socials</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-3 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <a href={`mailto:${data.email}`} className="hover:underline truncate">{data.email}</a>
+              <div className="flex items-center gap-3 text-sm group glass-hover p-2 rounded-lg -mx-2 transition-all">
+                <div className="p-2 rounded-md bg-white/5 group-hover:bg-primary/20 transition-colors">
+                  <Mail className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <a href={`mailto:${data.email}`} className="hover:underline truncate group-hover:text-primary transition-colors">{data.email}</a>
               </div>
               {socialLinks.map(({ Icon, href, name }: { Icon: React.ElementType; href: string; name: string }) => (
-                <div key={href} className="flex items-center gap-3 text-sm">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
+                <div key={href} className="flex items-center gap-3 text-sm group glass-hover p-2 rounded-lg -mx-2 transition-all">
+                  <div className="p-2 rounded-md bg-white/5 group-hover:bg-primary/20 transition-colors">
+                    <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
                   <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary truncate">{name}</a>
                 </div>
               ))}
@@ -585,7 +593,7 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
                     <p className="text-sm text-muted-foreground">
                       Send a message directly to {data.name} to discuss potential campaigns.
                     </p>
-                    <Button className="w-full shadow-lg shadow-primary/20" onClick={() => setIsMessageOpen(true)}>
+                    <Button className="btn-primary w-full" onClick={() => setIsMessageOpen(true)}>
                       Message {data.name}
                     </Button>
                   </>
@@ -596,7 +604,7 @@ export function PublicProfileView({ data }: { data: PublicProfileData }) {
                   <p className="text-sm text-muted-foreground">
                     Join Advize to connect with {data.name} and other top creators for brand campaigns.
                   </p>
-                  <Button asChild className="w-full shadow-lg shadow-primary/20">
+                  <Button asChild className="btn-primary w-full">
                     <Link href="/signup">Sign Up on Advize</Link>
                   </Button>
                 </>

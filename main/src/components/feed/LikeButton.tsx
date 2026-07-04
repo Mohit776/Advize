@@ -18,20 +18,24 @@ export function LikeButton({ postId, initialLiked, initialCount }: LikeButtonPro
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount);
   const [isPending, setIsPending] = useState(false);
+  const [burst, setBurst] = useState(false);
 
   const handleClick = async () => {
     if (!user || isPending) return;
 
-    // Optimistic update
     const newLiked = !liked;
     setLiked(newLiked);
     setCount((prev) => (newLiked ? prev + 1 : prev - 1));
-    setIsPending(true);
+    
+    if (newLiked) {
+      setBurst(true);
+      setTimeout(() => setBurst(false), 600);
+    }
 
+    setIsPending(true);
     try {
       await toggleLike(firestore, postId, user.uid);
     } catch {
-      // Revert on failure
       setLiked(!newLiked);
       setCount((prev) => (newLiked ? prev - 1 : prev + 1));
     } finally {
@@ -45,8 +49,9 @@ export function LikeButton({ postId, initialLiked, initialCount }: LikeButtonPro
       onClick={handleClick}
       disabled={!user || isPending}
       className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
-        'hover:bg-rose-500/10 active:scale-95',
+        'relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium',
+        'transition-all duration-200 select-none',
+        'hover:bg-rose-500/10 active:scale-90',
         liked
           ? 'text-rose-400'
           : 'text-muted-foreground hover:text-rose-400',
@@ -54,13 +59,23 @@ export function LikeButton({ postId, initialLiked, initialCount }: LikeButtonPro
       )}
       aria-label={liked ? 'Unlike post' : 'Like post'}
     >
+      {/* Burst animation ring */}
+      {burst && (
+        <span className="absolute inset-0 rounded-xl bg-rose-500/20 animate-ping" style={{ animationDuration: '0.6s' }} />
+      )}
       <Heart
         className={cn(
-          'h-4 w-4 transition-all duration-200',
-          liked && 'fill-rose-400 scale-110'
+          'h-4 w-4 transition-all duration-300',
+          liked ? 'fill-rose-400 scale-125 text-rose-400' : 'scale-100',
+          burst && 'scale-150'
         )}
       />
-      <span>{count}</span>
+      <span className={cn(
+        'tabular-nums transition-all duration-200',
+        liked && 'text-rose-400 font-semibold'
+      )}>
+        {count}
+      </span>
     </button>
   );
 }

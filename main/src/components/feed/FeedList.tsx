@@ -20,21 +20,21 @@ const userCache = new Map<string, { username: string | null, avatar: string | nu
 
 function PostCardSkeleton() {
   return (
-    <div className="bg-card border border-border/50 rounded-2xl p-4 space-y-3 animate-pulse">
+    <div className="glass-card rounded-2xl p-4 space-y-3 animate-pulse border-white/10">
       <div className="flex items-center gap-3">
-        <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
-        <div className="flex-1 space-y-1.5">
-          <Skeleton className="h-3.5 w-32 rounded" />
-          <Skeleton className="h-2.5 w-20 rounded" />
+        <Skeleton className="h-10 w-10 rounded-full flex-shrink-0 bg-white/10" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-3 w-32 rounded bg-white/10" />
+          <Skeleton className="h-2 w-20 rounded bg-white/5" />
         </div>
       </div>
-      <Skeleton className="h-4 w-full rounded" />
-      <Skeleton className="h-4 w-5/6 rounded" />
-      <Skeleton className="h-4 w-3/4 rounded" />
-      <Skeleton className="h-40 w-full rounded-xl" />
-      <div className="flex gap-4 pt-1">
-        <Skeleton className="h-7 w-16 rounded-full" />
-        <Skeleton className="h-7 w-16 rounded-full" />
+      <Skeleton className="h-3 w-full rounded bg-white/10" />
+      <Skeleton className="h-3 w-5/6 rounded bg-white/10" />
+      <Skeleton className="h-3 w-3/4 rounded bg-white/10" />
+      <Skeleton className="h-40 w-full rounded-xl bg-white/5" />
+      <div className="flex gap-4 pt-2">
+        <Skeleton className="h-6 w-16 rounded-full bg-white/10" />
+        <Skeleton className="h-6 w-16 rounded-full bg-white/10" />
       </div>
     </div>
   );
@@ -209,14 +209,17 @@ export function FeedList() {
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 py-20 text-center">
-        <div className="p-4 rounded-2xl bg-primary/10">
-          <Rss className="h-8 w-8 text-primary" />
+      <div className="flex flex-col items-center justify-center gap-4 py-24 text-center glass-card rounded-2xl border border-white/5 mx-4 md:mx-0 animate-fade-in-up">
+        <div className="relative">
+          <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+          <div className="relative p-5 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 glass-hover cursor-default">
+            <Rss className="h-10 w-10 text-primary" />
+          </div>
         </div>
         <div>
-          <p className="font-semibold text-foreground">Nothing here yet</p>
-          <p className="text-muted-foreground text-sm mt-1">
-            Be the first to post something to the community feed!
+          <p className="font-bold text-lg text-foreground mt-2">Nothing here yet</p>
+          <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
+            Be the first to post something to the community feed and spark a conversation!
           </p>
         </div>
       </div>

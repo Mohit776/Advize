@@ -160,7 +160,7 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
               onChange={(e) => setContent(e.target.value.slice(0, MAX_CHARS))}
               placeholder="Share something with the community…"
               rows={5}
-              className="resize-none bg-muted/30 border-border/40 focus-visible:ring-primary/40 rounded-xl text-sm leading-relaxed"
+              className="resize-none bg-muted/20 border-white/5 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl text-sm leading-relaxed transition-all duration-300 hover:bg-muted/30"
               disabled={isSubmitting}
             />
             <span
@@ -220,7 +220,7 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
               onClick={() => fileInputRef.current?.click()}
               disabled={isSubmitting || !!imageFile}
               className={cn(
-                'gap-2 text-muted-foreground hover:text-foreground rounded-xl',
+                'gap-2 text-muted-foreground hover:text-foreground rounded-xl transition-all glass-hover',
                 imageFile && 'opacity-40'
               )}
             >
@@ -235,7 +235,7 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
               size="sm"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="rounded-xl text-muted-foreground"
+              className="rounded-xl text-muted-foreground hover:bg-white/5 transition-all"
             >
               Cancel
             </Button>
@@ -244,7 +244,7 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
               onClick={handleSubmit}
               disabled={!canSubmit}
               size="sm"
-              className="rounded-xl gap-2 min-w-[100px]"
+              className="rounded-xl gap-2 min-w-[100px] btn-primary"
             >
               {isSubmitting ? (
                 <>

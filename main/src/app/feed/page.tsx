@@ -31,12 +31,12 @@ export default function FeedPage() {
             <div
               onClick={() => setModalOpen(true)}
               id="quick-compose-bar"
-              className="w-full mb-5 flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-border/50 text-muted-foreground text-sm hover:border-primary/40 hover:bg-card/80 transition-all duration-200 text-left group"
+              className="w-full mb-6 flex items-center gap-3 px-4 py-3 rounded-2xl glass-card cursor-pointer hover:bg-card/80 transition-all duration-300 text-left group animate-fade-in hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5"
             >
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                <PenSquare className="h-3.5 w-3.5 text-primary" />
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                <PenSquare className="h-4 w-4 text-primary" />
               </div>
-              <span className="group-hover:text-foreground/70 transition-colors flex-1">
+              <span className="group-hover:text-foreground transition-colors flex-1 text-sm text-muted-foreground">
                 What&apos;s on your mind? Share with the community…
               </span>
 

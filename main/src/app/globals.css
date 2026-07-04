@@ -32,7 +32,7 @@
     --input: 240 4% 16%;
     --ring: 217 91% 60%;
  
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --chart-1: 217 91% 60%;
     --chart-2: 180 80% 45%;
@@ -76,18 +76,51 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Custom Scrollbar for Dark Theme */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
 }
 
 @layer components {
   .card {
-    @apply shadow-md;
+    @apply shadow-xl shadow-black/40;
   }
   .btn-primary {
-    @apply shadow-lg shadow-primary/20;
+    @apply shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white;
+  }
+  .glass {
+    @apply bg-background/60 backdrop-blur-xl border border-white/10;
+  }
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-lg border border-white/5;
+  }
+  .glass-hover {
+    @apply transition-all duration-300 hover:bg-white/5 hover:border-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)];
+  }
+
+  /* Toast Glassmorphism Overrides */
+  [data-radix-toast] {
+    @apply !bg-card/70 !backdrop-blur-xl !border !border-white/10 !shadow-2xl;
   }
 }
