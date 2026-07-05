@@ -33,7 +33,7 @@ import { NICHES, CREATOR_TYPES } from '@/lib/creator-niches';
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   email: z.string().email('Invalid email address'),
-  bio: z.string().max(500, 'Bio is too long').optional(),
+  bio: z.string().refine(val => !val || val.trim().split(/\s+/).filter(Boolean).length <= 2000, 'Bio cannot exceed 2000 words').optional(),
   // Location split into 3 required fields
   city: z.string().min(1, 'City is required'),
   state: z.string().min(1, 'State / Province is required'),

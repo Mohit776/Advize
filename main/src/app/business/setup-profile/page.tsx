@@ -31,7 +31,7 @@ const profileFormSchema = z.object({
   industry: z.string().min(2, 'Industry is required'),
   location: z.string().min(2, 'Location is required'),
   website: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
-  about: z.string().max(500, 'About section is too long').optional(),
+  about: z.string().refine(val => !val || val.trim().split(/\s+/).filter(Boolean).length <= 2000, 'About section cannot exceed 2000 words').optional(),
   email: z.string().email('Invalid email address'),
   twitter: z.string().optional(),
   instagram: z.string().optional(),
