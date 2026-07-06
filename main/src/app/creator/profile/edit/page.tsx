@@ -217,6 +217,8 @@ export default function EditCreatorProfilePage() {
     await setDocumentNonBlocking(userDocRef, {
       name: data.name,
       email: data.email,
+      // Mirror categories to top-level doc so FeedList can rank without sub-collection reads
+      feedInterests: data.categories,
     }, { merge: true });
 
     const profileDocRef = doc(firestore, `users/${user.uid}/creatorProfile`, user.uid);

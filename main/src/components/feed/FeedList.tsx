@@ -5,7 +5,7 @@ import { Loader2, RefreshCw, Rss } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFirestore, useUser } from '@/firebase';
-import { FeedPost, getPosts, batchGetLikedPostIds, deletePost } from '@/lib/feed';
+import { FeedPost, getPosts, batchGetLikedPostIds, deletePost, scorePosts } from '@/lib/feed';
 import { VirtualPostCard } from './VirtualPostCard';
 import { DocumentSnapshot, doc, getDoc } from 'firebase/firestore';
 
@@ -58,12 +58,36 @@ export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userInterests, setUserInterests] = useState<string[]>([]);
 
   const cursorRef = useRef<DocumentSnapshot | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isLoadingMoreRef = useRef(false);
   const userRef = useRef(user);
   useEffect(() => { userRef.current = user; }, [user]);
+
+  // ── Fetch user interests ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    const fetchInterests = async () => {
+      try {
+        const snap = await getDoc(doc(firestore, 'users', user.uid));
+        if (snap.exists()) {
+          const d = snap.data();
+          // categories saved on the top-level user doc (written by profile edit)
+          const cats: string[] = d.feedInterests ?? d.categories ?? [];
+          setUserInterests(cats);
+        }
+      } catch (e) {
+        console.warn('[feed] Could not load user interests:', e);
+      }
+    };
+    fetchInterests();
+  }, [user, firestore]);
+
+  // keep a stable ref so loadPage (memoised) can read the latest value
+  const userInterestsRef = useRef<string[]>([]);
+  useEffect(() => { userInterestsRef.current = userInterests; }, [userInterests]);
 
   // ── Load a page ─────────────────────────────────────────────────────────────
   const loadPage = useCallback(
@@ -118,7 +142,15 @@ export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
           }
         });
 
-        setItems((prev) => (append ? [...prev, ...withLike] : withLike));
+        // 3. Score & re-rank using interests + freshness
+        const rawPosts = withLike.map(({ post }) => post);
+        const ranked = scorePosts(rawPosts, userInterestsRef.current);
+        const reranked: PostWithLike[] = ranked.map((post) => ({
+          post,
+          isLiked: likedIds.has(post.id),
+        }));
+
+        setItems((prev) => (append ? [...prev, ...reranked] : reranked));
         setError(null);
       } catch (e) {
         console.error('Failed to load feed:', e);

@@ -146,6 +146,62 @@ export async function getPosts(
 }
 
 /**
+ * Score and re-rank posts using a blended Interest + Freshness signal.
+ *
+ * Formula (weights configurable):
+ *   score = INTEREST_WEIGHT * interestScore + FRESHNESS_WEIGHT * freshnessScore
+ *
+ * interestScore  — Jaccard similarity between post tags and user interests (0–1).
+ *                  Falls back to 0 when either set is empty (pure freshness mode).
+ * freshnessScore — Exponential decay: 1 / (1 + ageHours / HALF_LIFE_HOURS)
+ *                  A 6-hour-old post scores ~0.5; a 24-hour post ~0.2.
+ *
+ * When userInterests is empty the function returns posts sorted purely by
+ * Firestore's createdAt DESC (no change from the default behaviour).
+ */
+const INTEREST_WEIGHT = 0.8;
+const FRESHNESS_WEIGHT = 0.2;
+const HALF_LIFE_HOURS = 6; // freshness halves every 6 hours
+
+export function scorePosts(
+  posts: FeedPost[],
+  userInterests: string[]   // user's categories / interest tags (lowercase-normalised)
+): FeedPost[] {
+  const interestSet = new Set(userInterests.map((i) => i.toLowerCase()));
+  const hasInterests = interestSet.size > 0;
+
+  const now = Date.now();
+
+  const scored = posts.map((post) => {
+    // ── Freshness ─────────────────────────────────────────────────────────────
+    const createdMs =
+      post.createdAt instanceof Timestamp
+        ? post.createdAt.toMillis()
+        : (post.createdAt as unknown as { seconds: number }).seconds * 1000;
+    const ageHours = (now - createdMs) / (1000 * 60 * 60);
+    const freshnessScore = 1 / (1 + ageHours / HALF_LIFE_HOURS);
+
+    // ── Interest (Jaccard) ────────────────────────────────────────────────────
+    let interestScore = 0;
+    if (hasInterests && post.tags && post.tags.length > 0) {
+      const postTagSet = new Set(post.tags.map((t) => t.toLowerCase()));
+      const intersection = [...postTagSet].filter((t) => interestSet.has(t)).length;
+      const union = new Set([...postTagSet, ...interestSet]).size;
+      interestScore = intersection / union;
+    }
+
+    const score = hasInterests
+      ? INTEREST_WEIGHT * interestScore + FRESHNESS_WEIGHT * freshnessScore
+      : freshnessScore; // pure freshness fallback
+
+    return { post, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map(({ post }) => post);
+}
+
+/**
  * Delete a post by ID (author only — enforced by Firestore rules).
  */
 export async function deletePost(firestore: Firestore, postId: string): Promise<void> {
