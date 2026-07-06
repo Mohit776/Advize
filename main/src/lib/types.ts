@@ -226,7 +226,7 @@ export type CollaborationRequest = {
 export type Notification = {
   id: string;
   userId: string;
-  type: 'submission_approved' | 'submission_rejected' | 'campaign_update' | 'payout_received' | 'new_message';
+  type: 'new_submission' | 'submission_approved' | 'submission_rejected' | 'campaign_update' | 'payout_received' | 'new_message';
   title: string;
   message: string;
   campaignId?: string;

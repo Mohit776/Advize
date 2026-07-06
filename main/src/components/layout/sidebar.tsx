@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
+    Bell,
     Home,
     LayoutDashboard,
     Megaphone,
     MessageSquare,
     User,
     Settings,
-    LogOut,
     TrendingUp,
     Search,
     Wallet,
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
+import { useNotifications } from '@/hooks/use-notifications';
 
 const CREATE_STORE_URL = 'https://store.advize.in';
 
@@ -29,7 +30,9 @@ export function Sidebar() {
     const { signOut } = useAuth();
     const { user } = useUser();
     const firestore = useFirestore();
+    const { unreadCount } = useNotifications();
     const [userRole, setUserRole] = useState<string | null>(null);
+
 
     useEffect(() => {
         const fetchUserRole = async () => {
@@ -155,6 +158,30 @@ export function Sidebar() {
                             </Link>
                         );
                     })}
+
+                    {/* Notifications link with live badge */}
+                    {user && (userRole === 'creator' || userRole === 'business') && (
+                        <Link
+                            href="/notifications"
+                            className={cn(
+                                'group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-all duration-200',
+                                pathname === '/notifications'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                            )}
+                        >
+                            <Bell className={cn("h-5 w-5 flex-shrink-0 transition-colors", pathname === '/notifications' ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                            Notifications
+                            {unreadCount > 0 && (
+                                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                            )}
+                            {pathname === '/notifications' && unreadCount === 0 && (
+                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            )}
+                        </Link>
+                    )}
                 </nav>
 
 

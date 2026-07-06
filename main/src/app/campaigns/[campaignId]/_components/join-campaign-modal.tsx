@@ -133,7 +133,16 @@ export function JoinCampaignModal({
       submittedAt: serverTimestamp(),
     });
 
-    // Note: creatorIds is updated by the business when they approve the submission
+    // 2. Notify the business owner about the new submission
+    const { sendNotification } = await import('@/lib/notifications');
+    sendNotification(firestore, businessId, {
+      userId: businessId,
+      type: 'new_submission',
+      title: 'New Campaign Submission 📥',
+      message: `${creatorName} submitted for your campaign "${campaignName}".`,
+      campaignId,
+      campaignName,
+    });
 
     toast({
       title: 'Submission Received!',

@@ -3,14 +3,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download, LogOut, Megaphone, Home, Store, Rss } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import { Menu, User as UserIcon, Settings, LayoutDashboard, Wallet, Bell, FileText, MessageSquare, Search, Download, Megaphone, Home, Store, Rss } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,9 +20,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { doc, getDoc, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import type { Campaign, Submission, Notification, CollaborationRequest } from '@/lib/types';
+import { useNotifications } from '@/hooks/use-notifications';
+import type { Notification } from '@/lib/types';
 
 
 const navLinks = [
@@ -89,75 +90,15 @@ export function PublicHeader() {
     fetchUserData();
   }, [user, firestore]);
 
-  const campaignsQuery = useMemoFirebase(
-    () => user && userRole === 'business' ? query(collection(firestore, 'campaigns'), where('businessId', '==', user.uid)) : null,
-    [user, userRole, firestore]
-  );
-  const { data: rawCampaigns } = useCollection<Campaign>(campaignsQuery);
-  const campaignIds = useMemo(() => rawCampaigns?.map(c => c.id) || [], [rawCampaigns]);
-
-  const submissionsQuery = useMemoFirebase(
-    () => (firestore && campaignIds.length > 0 && user) ? query(collection(firestore, 'submissions'), where('campaignId', 'in', campaignIds), where('businessId', '==', user.uid)) : null,
-    [firestore, campaignIds, user]
-  );
-  const { data: submissions } = useCollection<Submission>(submissionsQuery);
-
-  const pendingSubmissions = useMemo(() => {
-    if (userRole !== 'business' || !submissions) return [];
-
-    const campaignMap = new Map(rawCampaigns?.map(c => [c.id, c.name]));
-
-    return submissions
-      .filter(s => s.status === 'pending')
-      .map(s => ({
-        ...s,
-        campaignName: campaignMap.get(s.campaignId) || 'a campaign',
-      }));
-  }, [submissions, rawCampaigns, userRole]);
-
-  // Creator queries
-  const creatorNotificationsQuery = useMemoFirebase(
-    () => (user && userRole === 'creator' && firestore) ? query(collection(firestore, `users/${user.uid}/notifications`), orderBy('createdAt', 'desc')) : null,
-    [user, userRole, firestore]
-  );
-  const { data: creatorNotifications } = useCollection<Notification>(creatorNotificationsQuery);
-
-  const pendingRequestsQuery = useMemoFirebase(
-    () => (user && userRole === 'creator' && firestore) ? query(collection(firestore, `users/${user.uid}/collaborationRequests`), where('status', '==', 'pending')) : null,
-    [user, userRole, firestore]
-  );
-  const { data: pendingRequests } = useCollection<CollaborationRequest>(pendingRequestsQuery);
-
-  const creatorUnreadCount = useMemo(() => {
-    const unreadNotifications = creatorNotifications?.filter(n => !n.isRead).length || 0;
-    const pendingCollabRequests = pendingRequests?.length || 0;
-    return unreadNotifications + pendingCollabRequests;
-  }, [creatorNotifications, pendingRequests]);
+  const { notifications, unreadCount, markAllRead, markOneRead } = useNotifications();
 
   const handleMarkAllRead = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user || !firestore) return;
-
-    try {
-      const unreadNotifs = creatorNotifications?.filter(n => !n.isRead) || [];
-      const promises = unreadNotifs.map(n => 
-        updateDoc(doc(firestore, `users/${user.uid}/notifications`, n.id), { isRead: true })
-      );
-      await Promise.all(promises);
-      toast({
-        title: "Marked as read",
-        description: "Your notifications have been marked as read."
-      });
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error",
-        description: "Failed to mark notifications as read.",
-        variant: "destructive"
-      });
-    }
+    await markAllRead();
+    toast({ title: 'Marked as read', description: 'All notifications have been marked as read.' });
   };
+
 
   const handleCreateStore = () => {
     if (user) {
@@ -415,8 +356,8 @@ export function PublicHeader() {
             </>
           ) : (
             <>
-              {/* Business Notifications Bell */}
-              {userRole === 'business' && (
+              {/* Notifications Bell — both creator and business */}
+              {user && (userRole === 'creator' || userRole === 'business') && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -425,84 +366,64 @@ export function PublicHeader() {
                       className="relative hover:bg-primary/10 transition-all duration-200"
                     >
                       <Bell className="h-5 w-5" />
-                      {pendingSubmissions.length > 0 && (
+                      {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg animate-pulse">
-                          {pendingSubmissions.length}
-                        </span>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-80">
-                    <DropdownMenuLabel>Pending Submissions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {pendingSubmissions.length > 0 ? (
-                      pendingSubmissions.map(submission => (
-                        <DropdownMenuItem key={submission.id} asChild className="p-0">
-                          <Link href={`/business/campaigns/${submission.campaignId}`} className="block w-full p-2 text-wrap hover:bg-accent">
-                            <div className="flex items-start gap-3">
-                              <div className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                <FileText className="h-4 w-4 text-primary" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-xs text-muted-foreground">New submission for</p>
-                                <p className="font-semibold text-foreground text-sm truncate">"{submission.campaignName}"</p>
-                                <p className="text-xs text-muted-foreground">from {submission.creatorName}</p>
-                              </div>
-                            </div>
-                          </Link>
-                        </DropdownMenuItem>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        You have no new notifications.
-                      </div>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-
-              {/* Creator Notifications Bell */}
-              {userRole === 'creator' && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="relative hover:bg-primary/10 transition-all duration-200"
-                    >
-                      <Bell className="h-5 w-5" />
-                      {creatorUnreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg animate-pulse">
-                          {creatorUnreadCount}
+                          {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
                     <DropdownMenuLabel className="flex items-center justify-between">
-                      <span>Inbox Alerts</span>
-                      {creatorUnreadCount > 0 && (
+                      <span>Notifications</span>
+                      {unreadCount > 0 && (
                         <Button variant="ghost" size="sm" onClick={handleMarkAllRead} className="h-auto p-1 text-xs text-primary hover:bg-primary/10">
                           Mark all as read
                         </Button>
                       )}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild className="p-0">
-                      <Link href={`/creator/profile/${user.uid}`} className="block w-full p-4 text-wrap hover:bg-accent cursor-pointer">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                            <MessageSquare className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-foreground text-sm">
-                              {creatorUnreadCount > 0 ? `You have ${creatorUnreadCount} new alerts!` : "Inbox is up to date"}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">Click to open your Inbox tab.</p>
-                          </div>
-                        </div>
-                      </Link>
-                    </DropdownMenuItem>
+                    {notifications.length > 0 ? (
+                      <>
+                        {notifications.slice(0, 5).map((notif) => {
+                          const href = notif.campaignId
+                            ? (notif.type === 'new_submission'
+                                ? `/business/campaigns/${notif.campaignId}`
+                                : `/campaigns/${notif.campaignId}`)
+                            : '/notifications';
+                          return (
+                            <DropdownMenuItem
+                              key={notif.id}
+                              asChild
+                              className="p-0"
+                              onClick={() => markOneRead(notif.id)}
+                            >
+                              <Link href={href} className="block w-full p-3 hover:bg-accent">
+                                <div className="flex items-start gap-3">
+                                  {!notif.isRead && (
+                                    <span className="mt-1.5 flex-shrink-0 h-2 w-2 rounded-full bg-primary" />
+                                  )}
+                                  <div className={cn('flex-1 min-w-0', notif.isRead && 'ml-5')}>
+                                    <p className="font-semibold text-sm truncate">{notif.title}</p>
+                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{notif.message}</p>
+                                  </div>
+                                </div>
+                              </Link>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild className="p-0">
+                          <Link href="/notifications" className="block w-full p-3 text-center text-xs text-primary hover:bg-accent font-medium">
+                            View all notifications
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        You have no new notifications.
+                      </div>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

@@ -145,6 +145,16 @@ The ${campaign.brandName || 'Campaign'} Team`;
         campaignId: campaign.id,
     });
 
+    // 3. Write a notification to the creator (triggers push via Cloud Function)
+    const { sendNotification } = await import('@/lib/notifications');
+    sendNotification(firestore, submission.creatorId, {
+        userId: submission.creatorId,
+        type: 'submission_rejected',
+        title: 'Submission Not Approved',
+        message: `Your submission for "${campaign.name}" was not approved. Reason: ${finalReason}`,
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+    });
 
     toast({
       title: 'Submission Rejected',
