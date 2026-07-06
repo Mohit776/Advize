@@ -29,6 +29,9 @@ export interface FeedPost {
   authorName: string;
   authorAvatar?: string;
   authorUsername?: string;    // slug/username, used for pretty profile URLs
+  title?: string;
+  tags?: string[];
+  targetAge?: string;
   content: string;
   imageUrl?: string;
   likeCount: number;
@@ -53,6 +56,9 @@ export interface CreatePostInput {
   authorName: string;
   authorAvatar?: string;
   authorUsername?: string;
+  title?: string;
+  tags?: string[];
+  targetAge?: string;
   content: string;
   imageFile?: File;
 }
@@ -93,6 +99,9 @@ export async function createPost(
     authorName: input.authorName,
     authorAvatar: input.authorAvatar ?? null,
     authorUsername: input.authorUsername ?? null,
+    title: input.title?.trim() || null,
+    tags: input.tags ?? [],
+    targetAge: input.targetAge?.trim() || null,
     content: input.content,
     imageUrl: null,
     likeCount: 0,

@@ -1,21 +1,31 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { ImagePlus, X, Loader2, Send } from 'lucide-react';
+import { useRef, useState, useEffect, KeyboardEvent } from 'react';
+import { ImagePlus, X, Loader2, Send, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useFirebase, useUser } from '@/firebase';
 import { createPost } from '@/lib/feed';
 import { doc, getDoc } from 'firebase/firestore';
-import { useEffect } from 'react';
 
 interface CreatePostModalProps {
   open: boolean;
@@ -25,16 +35,23 @@ interface CreatePostModalProps {
 
 const MAX_CHARS = 2000;
 const MAX_FILE_MB = 5;
+const MAX_TAGS = 15;
+const MIN_TAGS = 4;
 
 export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalProps) {
   const { firestore, storage } = useFirebase();
   const { user } = useUser();
 
   const [content, setContent] = useState('');
+  const [title, setTitle] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [targetAge, setTargetAge] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [userRole, setUserRole] = useState<'creator' | 'business'>('creator');
   const [userName, setUserName] = useState('');
@@ -59,6 +76,26 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
     fetchProfile();
   }, [user, open, firestore]);
 
+  const addTag = (raw: string) => {
+    const tag = raw.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (!tag || tags.includes(tag) || tags.length >= MAX_TAGS) return;
+    setTags((prev) => [...prev, tag]);
+  };
+
+  const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(tagInput);
+      setTagInput('');
+    } else if (e.key === 'Backspace' && tagInput === '' && tags.length > 0) {
+      setTags((prev) => prev.slice(0, -1));
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((prev) => prev.filter((t) => t !== tag));
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -82,13 +119,17 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
   const handleClose = () => {
     if (isSubmitting) return;
     setContent('');
+    setTitle('');
+    setTags([]);
+    setTagInput('');
+    setTargetAge('');
     removeImage();
     setError(null);
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!user || !content.trim() || isSubmitting) return;
+    if (!user || !content.trim() || !title.trim() || tags.length < MIN_TAGS || isSubmitting) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -100,12 +141,20 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
         authorName: userName,
         authorAvatar: userAvatar,
         authorUsername: userUsername,
+        title: title.trim(),
+        tags,
+        targetAge: targetAge.trim() || undefined,
         content: content.trim(),
         imageFile: imageFile ?? undefined,
       });
 
       setContent('');
+      setTitle('');
+      setTags([]);
+      setTagInput('');
+      setTargetAge('');
       removeImage();
+      setShowConfirm(false);
       onCreated?.();
       onClose();
     } catch (e) {
@@ -117,7 +166,12 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
   };
 
   const charsLeft = MAX_CHARS - content.length;
-  const canSubmit = content.trim().length > 0 && charsLeft >= 0 && !isSubmitting;
+  const canSubmit =
+    content.trim().length > 0 &&
+    title.trim().length > 0 &&
+    tags.length >= MIN_TAGS &&
+    charsLeft >= 0 &&
+    !isSubmitting;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
@@ -151,26 +205,105 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
           </div>
         </DialogHeader>
 
-        <div className="px-5 py-4 space-y-4">
-          {/* Text area */}
-          <div className="relative">
-            <Textarea
-              id="post-content-input"
-              value={content}
-              onChange={(e) => setContent(e.target.value.slice(0, MAX_CHARS))}
-              placeholder="Share something with the community…"
-              rows={5}
-              className="resize-none bg-muted/20 border-white/5 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl text-sm leading-relaxed transition-all duration-300 hover:bg-muted/30"
+        <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* Title */}
+          <div className="space-y-1.5">
+            <label htmlFor="post-title-input" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Title <span className="text-destructive">*</span>
+            </label>
+            <Input
+              id="post-title-input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value.slice(0, 100))}
+              placeholder="Give your post a title…"
               disabled={isSubmitting}
+              className="bg-muted/20 border-white/5 rounded-xl focus-visible:ring-primary/50 text-sm"
             />
-            <span
-              className={cn(
-                'absolute bottom-2.5 right-3 text-[10px] tabular-nums transition-colors',
-                charsLeft < 50 ? 'text-destructive' : 'text-muted-foreground/50'
+          </div>
+
+          {/* Text area */}
+          <div className="space-y-1.5">
+            <label htmlFor="post-content-input" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Content <span className="text-destructive">*</span>
+            </label>
+            <div className="relative">
+              <Textarea
+                id="post-content-input"
+                value={content}
+                onChange={(e) => setContent(e.target.value.slice(0, MAX_CHARS))}
+                placeholder="Share something with the community…"
+                rows={5}
+                className="resize-none bg-muted/20 border-white/5 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl text-sm leading-relaxed transition-all duration-300 hover:bg-muted/30"
+                disabled={isSubmitting}
+              />
+              <span
+                className={cn(
+                  'absolute bottom-2.5 right-3 text-[10px] tabular-nums transition-colors',
+                  charsLeft < 50 ? 'text-destructive' : 'text-muted-foreground/50'
+                )}
+              >
+                {charsLeft}
+              </span>
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center justify-between">
+              <span>Tags <span className="text-destructive">*</span> <span className="text-muted-foreground/40 normal-case font-normal">(press Enter or comma to add)</span></span>
+              <span className={cn('text-[10px] tabular-nums', tags.length < MIN_TAGS ? 'text-amber-400' : 'text-primary')}>
+                {tags.length}/{MIN_TAGS} min
+              </span>
+            </label>
+            <div className={cn(
+              'flex flex-wrap items-center gap-1.5 min-h-[42px] px-3 py-2 rounded-xl bg-muted/20 border border-white/5 transition-all focus-within:ring-1 focus-within:ring-primary/50',
+              tags.length >= MAX_TAGS && 'opacity-60'
+            )}>
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-medium"
+                >
+                  <Tag className="h-2.5 w-2.5" />
+                  {tag}
+                  <button
+                    onClick={() => removeTag(tag)}
+                    disabled={isSubmitting}
+                    className="ml-0.5 hover:text-destructive transition-colors"
+                    aria-label={`Remove tag ${tag}`}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              ))}
+              {tags.length < MAX_TAGS && (
+                <input
+                  id="post-tag-input"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={() => { if (tagInput.trim()) { addTag(tagInput); setTagInput(''); } }}
+                  placeholder={tags.length === 0 ? 'e.g. travel, food, lifestyle…' : ''}
+                  disabled={isSubmitting}
+                  className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
+                />
               )}
-            >
-              {charsLeft}
-            </span>
+            </div>
+          </div>
+
+          {/* Target Age (optional) */}
+          <div className="space-y-1.5">
+            <label htmlFor="post-age-input" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Target Age <span className="text-muted-foreground/40 normal-case font-normal">(optional)</span>
+            </label>
+            <Input
+              id="post-age-input"
+              value={targetAge}
+              onChange={(e) => setTargetAge(e.target.value.slice(0, 20))}
+              placeholder="e.g. 18–24, All ages, 13+"
+              disabled={isSubmitting}
+              className="bg-muted/20 border-white/5 rounded-xl focus-visible:ring-primary/50 text-sm"
+            />
           </div>
 
           {/* Image preview */}
@@ -201,7 +334,7 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-between px-5 pb-5">
+        <div className="flex items-center justify-between px-5 pb-5 pt-3 border-t border-border/40">
           <div className="flex items-center gap-2">
             {/* Image upload */}
             <input
@@ -241,7 +374,7 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
             </Button>
             <Button
               id="post-submit-btn"
-              onClick={handleSubmit}
+              onClick={() => setShowConfirm(true)}
               disabled={!canSubmit}
               size="sm"
               className="rounded-xl gap-2 min-w-[100px] btn-primary"
@@ -261,6 +394,31 @@ export function CreatePostModal({ open, onClose, onCreated }: CreatePostModalPro
           </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent className="rounded-2xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ready to post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to publish this post to the community feed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel className="rounded-xl" disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleSubmit();
+              }} 
+              className="rounded-xl btn-primary" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Confirm Post
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

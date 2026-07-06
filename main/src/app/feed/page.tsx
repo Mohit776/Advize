@@ -1,17 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import { PenSquare, Rss } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { PenSquare, Rss, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { ProfileCard } from '@/components/feed/ProfileCard';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 
 export default function FeedPage() {
   const { user } = useUser();
+  const firestore = useFirestore();
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user && firestore) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setUserRole(userDoc.data().role);
+        }
+      } else {
+        setUserRole(null);
+      }
+    };
+    fetchUserData();
+  }, [user, firestore]);
 
   const handleCreated = () => {
     setFeedKey((k) => k + 1);
@@ -27,7 +47,7 @@ export default function FeedPage() {
         
 
           {/* Quick-compose bar */}
-          {user && (
+          {user && userRole === 'business' && (
             <div
               onClick={() => setModalOpen(true)}
               id="quick-compose-bar"
@@ -56,8 +76,21 @@ export default function FeedPage() {
             </div>
           )}
 
+          {/* Creator search box */}
+          {user && userRole === 'creator' && (
+            <div className="w-full mb-6 relative group animate-fade-in">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              <Input
+                placeholder="Search posts or creators..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 rounded-2xl glass-card border-none shadow-sm h-[52px] bg-card/80 focus-visible:ring-1 focus-visible:ring-primary/30 transition-all text-base"
+              />
+            </div>
+          )}
+
           {/* Feed */}
-          <FeedList key={feedKey} />
+          <FeedList key={feedKey} searchQuery={searchQuery} />
         </div>
 
         {/* ── Right: Profile card ── */}

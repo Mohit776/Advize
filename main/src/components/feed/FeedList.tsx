@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Loader2, RefreshCw, Rss } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,7 +49,7 @@ interface PostWithLike {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function FeedList() {
+export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
   const firestore = useFirestore();
   const { user } = useUser();
 
@@ -186,6 +186,16 @@ export function FeedList() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  const filteredItems = useMemo(() => {
+    if (!searchQuery?.trim()) return items;
+    const lower = searchQuery.toLowerCase();
+    return items.filter(({ post }) => 
+      post.content.toLowerCase().includes(lower) || 
+      post.authorName.toLowerCase().includes(lower) ||
+      (post.authorUsername && post.authorUsername.toLowerCase().includes(lower))
+    );
+  }, [items, searchQuery]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -219,9 +229,19 @@ export function FeedList() {
         <div>
           <p className="font-bold text-lg text-foreground mt-2">Nothing here yet</p>
           <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
-            Be the first to post something to the community feed and spark a conversation!
+            {searchQuery 
+              ? 'No posts matched your search. Try adjusting your keywords.' 
+              : 'Be the first to post something to the community feed and spark a conversation!'}
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (filteredItems.length === 0 && items.length > 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+        <p className="text-muted-foreground">No posts matched "{searchQuery}"</p>
       </div>
     );
   }
@@ -231,7 +251,7 @@ export function FeedList() {
       {/* Refresh button */}
     
       {/* Posts — VirtualPostCard handles DOM windowing */}
-      {items.map(({ post, isLiked }) => (
+      {filteredItems.map(({ post, isLiked }) => (
         <VirtualPostCard
           key={post.id}
           post={post}

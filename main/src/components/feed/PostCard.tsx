@@ -134,7 +134,7 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
             )}
             aria-label="Bookmark post"
           >
-            <Bookmark className={cn('h-4 w-4 transition-all', bookmarked && 'fill-primary')} />
+
           </button>
 
           {isAuthor && (
