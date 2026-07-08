@@ -53,7 +53,8 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
   }, []);
 
   const isAuthor = user?.uid === post.authorId;
-  const isLong = post.content.length > CONTENT_CLAMP_LENGTH;
+  const safeContent = post.content ?? '';
+  const isLong = safeContent.length > CONTENT_CLAMP_LENGTH;
 
   const formatTime = () => {
     if (!post.createdAt) return '';
@@ -170,8 +171,8 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
         <p className="text-sm text-foreground/90 leading-[1.7] whitespace-pre-wrap break-words">
           {renderInlineText(
             isLong && !expanded
-              ? post.content.slice(0, CONTENT_CLAMP_LENGTH) + '…'
-              : post.content
+              ? safeContent.slice(0, CONTENT_CLAMP_LENGTH) + '…'
+              : safeContent
           )}
         </p>
         {isLong && (
@@ -248,8 +249,17 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all duration-200 active:scale-95"
           aria-label="Share post"
           onClick={() => {
+            const url = `${window.location.origin}/post/${post.id}`;
             if (typeof window !== 'undefined' && navigator.share) {
-              navigator.share({ text: post.content.slice(0, 100) });
+              navigator.share({ 
+                title: `${post.authorName} on Advize`,
+                text: safeContent.slice(0, 100) + '...',
+                url: url
+              }).catch(() => {});
+            } else {
+              if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText(url);
+              }
             }
           }}
         >

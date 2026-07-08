@@ -21,11 +21,12 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, setDocumentNonBlocking, useMemoFirebase, useStorage } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { generateSlug } from '@/lib/username-utils';
 
 const profileFormSchema = z.object({
   brandName: z.string().min(2, 'Brand name is too short'),
@@ -171,6 +172,38 @@ export default function EditBusinessProfilePage() {
         name: data.brandName,
         email: data.email,
     }, { merge: true });
+
+    // Generate username if business doesn't have one yet
+    let username: string | null = userData?.username || null;
+    if (!username) {
+      try {
+        const slug = generateSlug(data.brandName);
+        let candidate = slug;
+        let suffix = 2;
+        while (true) {
+          const snap = await getDoc(doc(firestore, 'usernames', candidate));
+          if (!snap.exists()) {
+            username = candidate;
+            break;
+          }
+          const existingUid = snap.data()?.uid;
+          if (existingUid === user.uid) {
+            username = candidate;
+            break;
+          }
+          candidate = `${slug}_${suffix}`;
+          suffix++;
+        }
+        const { writeBatch } = await import('firebase/firestore');
+        const batch = writeBatch(firestore);
+        batch.set(doc(firestore, 'users', user.uid), { username }, { merge: true });
+        batch.set(doc(firestore, 'usernames', username!), { uid: user.uid });
+        await batch.commit();
+      } catch (err) {
+        console.warn('[username] Could not claim username:', err);
+        username = null;
+      }
+    }
 
     const profileDocRef = doc(firestore, `users/${user.uid}/businessProfile`, user.uid);
     setDocumentNonBlocking(profileDocRef, {

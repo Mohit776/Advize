@@ -17,7 +17,6 @@ import {
     Store,
     Rss,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';

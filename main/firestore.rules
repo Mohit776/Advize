@@ -159,5 +159,12 @@ match /posts/{postId} {
   }
 }
 
+// FOLLOWS: Public read, authenticated write by follower
+match /follows/{followId} {
+  allow read: if true;
+  allow create: if request.auth != null && request.resource.data.followerId == request.auth.uid;
+  allow update, delete: if request.auth != null && resource.data.followerId == request.auth.uid;
+}
+
   }
 }

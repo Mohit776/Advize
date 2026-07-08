@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFirestore, useUser } from '@/firebase';
 import { FeedPost, getPosts, batchGetLikedPostIds, deletePost, scorePosts } from '@/lib/feed';
 import { VirtualPostCard } from './VirtualPostCard';
-import { DocumentSnapshot, doc, getDoc } from 'firebase/firestore';
+import { DocumentSnapshot, doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
 const PAGE_SIZE = 8;
 
@@ -49,7 +49,7 @@ interface PostWithLike {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
+export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: string; tab?: 'forYou' | 'following' }) {
   const firestore = useFirestore();
   const { user } = useUser();
 
@@ -88,6 +88,29 @@ export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
   // keep a stable ref so loadPage (memoised) can read the latest value
   const userInterestsRef = useRef<string[]>([]);
   useEffect(() => { userInterestsRef.current = userInterests; }, [userInterests]);
+
+  // ── Fetch followed account IDs ────────────────────────────────────────────
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const followedIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user) { setFollowedIds(new Set()); return; }
+    const fetchFollowed = async () => {
+      try {
+        const q = query(
+          collection(firestore, 'follows'),
+          where('followerId', '==', user.uid)
+        );
+        const snap = await getDocs(q);
+        const ids = new Set<string>(snap.docs.map((d) => d.data().followingId as string));
+        setFollowedIds(ids);
+        followedIdsRef.current = ids;
+      } catch (e) {
+        console.warn('[feed] Could not load followed IDs:', e);
+      }
+    };
+    fetchFollowed();
+  }, [user, firestore]);
 
   // ── Load a page ─────────────────────────────────────────────────────────────
   const loadPage = useCallback(
@@ -142,9 +165,9 @@ export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
           }
         });
 
-        // 3. Score & re-rank using interests + freshness
+        // 3. Score & re-rank using interests + freshness + follow boost
         const rawPosts = withLike.map(({ post }) => post);
-        const ranked = scorePosts(rawPosts, userInterestsRef.current);
+        const ranked = scorePosts(rawPosts, userInterestsRef.current, followedIdsRef.current);
         const reranked: PostWithLike[] = ranked.map((post) => ({
           post,
           isLiked: likedIds.has(post.id),
@@ -219,14 +242,22 @@ export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const filteredItems = useMemo(() => {
-    if (!searchQuery?.trim()) return items;
+    // First filter by following tab if applicable
+    let base = items;
+    if (tab === 'following' && followedIds.size > 0) {
+      base = items.filter(({ post }) => followedIds.has(post.authorId));
+    } else if (tab === 'following' && followedIds.size === 0) {
+      base = []; // no follows yet → empty following feed
+    }
+    // Then apply search query
+    if (!searchQuery?.trim()) return base;
     const lower = searchQuery.toLowerCase();
-    return items.filter(({ post }) => 
-      post.content.toLowerCase().includes(lower) || 
+    return base.filter(({ post }) =>
+      post.content.toLowerCase().includes(lower) ||
       post.authorName.toLowerCase().includes(lower) ||
       (post.authorUsername && post.authorUsername.toLowerCase().includes(lower))
     );
-  }, [items, searchQuery]);
+  }, [items, searchQuery, tab, followedIds]);
 
   if (isLoading) {
     return (
@@ -249,7 +280,8 @@ export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
     );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 || (tab === 'following' && filteredItems.length === 0)) {
+    const isFollowingEmpty = tab === 'following';
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24 text-center glass-card rounded-2xl border border-white/5 mx-4 md:mx-0 animate-fade-in-up">
         <div className="relative">
@@ -259,11 +291,15 @@ export function FeedList({ searchQuery = '' }: { searchQuery?: string }) {
           </div>
         </div>
         <div>
-          <p className="font-bold text-lg text-foreground mt-2">Nothing here yet</p>
+          <p className="font-bold text-lg text-foreground mt-2">
+            {isFollowingEmpty ? 'No posts from followed brands' : 'Nothing here yet'}
+          </p>
           <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
-            {searchQuery 
-              ? 'No posts matched your search. Try adjusting your keywords.' 
-              : 'Be the first to post something to the community feed and spark a conversation!'}
+            {isFollowingEmpty
+              ? 'Follow brands you love to see their posts here.'
+              : searchQuery
+                ? 'No posts matched your search. Try adjusting your keywords.'
+                : 'Be the first to post something to the community feed and spark a conversation!'}
           </p>
         </div>
       </div>

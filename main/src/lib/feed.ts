@@ -120,6 +120,19 @@ export async function createPost(
 }
 
 /**
+ * Fetch a single post by ID.
+ */
+export async function getPost(
+  firestore: Firestore,
+  postId: string
+): Promise<FeedPost | null> {
+  const docRef = doc(firestore, 'posts', postId);
+  const snapshot = await getDoc(docRef);
+  if (!snapshot.exists()) return null;
+  return { id: snapshot.id, ...(snapshot.data() as Omit<FeedPost, 'id'>) };
+}
+
+/**
  * Fetch a paginated list of posts, newest first.
  * Pass `cursor` (last DocumentSnapshot) for pagination.
  */
@@ -162,10 +175,12 @@ export async function getPosts(
 const INTEREST_WEIGHT = 0.8;
 const FRESHNESS_WEIGHT = 0.2;
 const HALF_LIFE_HOURS = 6; // freshness halves every 6 hours
+const FOLLOW_BOOST = 0.5;  // score bonus for posts by followed accounts
 
 export function scorePosts(
   posts: FeedPost[],
-  userInterests: string[]   // user's categories / interest tags (lowercase-normalised)
+  userInterests: string[],   // user's categories / interest tags (lowercase-normalised)
+  followedIds: Set<string> = new Set() // IDs of accounts the user follows
 ): FeedPost[] {
   const interestSet = new Set(userInterests.map((i) => i.toLowerCase()));
   const hasInterests = interestSet.size > 0;
@@ -190,9 +205,12 @@ export function scorePosts(
       interestScore = intersection / union;
     }
 
+    // ── Follow boost ──────────────────────────────────────────────────────────
+    const followBoost = followedIds.has(post.authorId) ? FOLLOW_BOOST : 0;
+
     const score = hasInterests
-      ? INTEREST_WEIGHT * interestScore + FRESHNESS_WEIGHT * freshnessScore
-      : freshnessScore; // pure freshness fallback
+      ? INTEREST_WEIGHT * interestScore + FRESHNESS_WEIGHT * freshnessScore + followBoost
+      : freshnessScore + followBoost; // pure freshness + follow boost fallback
 
     return { post, score };
   });

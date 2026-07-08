@@ -15,6 +15,9 @@ import {
   LayoutDashboard,
   Bell,
   MessageSquare,
+  Share2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -50,10 +53,36 @@ function BusinessProfileContent() {
   const { user: currentUser, isUserLoading: isCurrentUserLoading } = useUser();
   const firestore = useFirestore();
   const searchParams = useSearchParams();
+  const [copied, setCopied] = useState(false);
 
   const userIdFromQuery = searchParams.get('userId');
   const profileUserId = userIdFromQuery || currentUser?.uid;
   const isOwnProfile = !userIdFromQuery || userIdFromQuery === currentUser?.uid;
+
+  const handleShareProfile = async (profileId: string, name: string) => {
+    const url = `${window.location.origin}/profile/${profileId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${name} | Advize Brand Profile`,
+          text: `Check out ${name}'s brand profile on Advize!`,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        toast({ title: 'Link Copied!', description: 'Public profile link copied to clipboard.' });
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        await navigator.clipboard.writeText(url).catch(() => {});
+        setCopied(true);
+        toast({ title: 'Link Copied!', description: 'Public profile link copied to clipboard.' });
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
+  };
 
   const businessProfileRef = useMemoFirebase(
     () => (profileUserId ? doc(firestore, `users/${profileUserId}/businessProfile`, profileUserId) : null),
@@ -263,7 +292,20 @@ function BusinessProfileContent() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                  {/* Share button — visible to everyone */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleShareProfile(userData?.username || profileUserId || '', userData?.name ?? 'Brand')}
+                    className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/10 hover:text-primary transition-all"
+                  >
+                    {copied ? (
+                      <><Check className="h-4 w-4 text-green-400" /><span className="text-green-400">Copied!</span></>
+                    ) : (
+                      <><Share2 className="h-4 w-4" />Share</>
+                    )}
+                  </Button>
                   {isOwnProfile && (
                     <>
                       <Button asChild size="sm">
