@@ -1,7 +1,5 @@
 // ─── Cache version: bump this string on every deployment ───────────────────────
-// Using a build timestamp so it auto-increments. In production you can replace
-// this with a real build ID injected at build time.
-const CACHE_VERSION = 'advize-v3';
+const CACHE_VERSION = 'advize-v4';
 const CACHE_NAME = CACHE_VERSION;
 
 // Only pre-cache truly static, immutable assets (icons/images — NOT HTML pages)
@@ -32,16 +30,31 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch strategy:
-// - HTML/navigation requests     → Network-first (always get fresh pages)
-// - API / Firebase / RSC routes  → Network-first (dynamic data)
-// - Next.js immutable static     → Cache-first (hashed filenames never change)
-// - Everything else              → Network-first (safe default)
+// - Navigation requests           → Network-only (let the browser handle failures natively)
+// - API / Firebase / RSC routes    → Network-only (dynamic data, never cache)
+// - Next.js immutable static      → Cache-first (hashed filenames never change)
+// - Everything else               → Network-first with cache fallback
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
     // Skip non-GET and browser-extension requests
     if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
+
+    // ── Navigation requests (HTML pages) ─────────────────────────────────────
+    // DO NOT intercept these. Let the browser handle network failures natively
+    // with its own error page. Intercepting navigations and returning
+    // Response.error() or undefined causes the "Application error" crash.
+    if (request.mode === 'navigate') return;
+
+    // ── Skip API, Firebase, and dynamic data routes entirely ─────────────────
+    const isDynamic =
+        url.pathname.startsWith('/api/') ||
+        url.hostname.includes('firebase') ||
+        url.hostname.includes('googleapis') ||
+        url.pathname.startsWith('/_next/data/') ||
+        url.searchParams.has('_rsc');
+    if (isDynamic) return;
 
     // ── Next.js immutable static assets (content-hashed, safe to cache forever) ──
     if (url.pathname.startsWith('/_next/static/')) {
@@ -61,27 +74,32 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // ── Everything else: Network-first ──────────────────────────────────────────
-    // This covers: HTML pages, API routes, Firebase, Next.js RSC/data routes.
-    // If the network fails we fall back to whatever is in cache.
+    // ── Everything else: Network-first with safe cache fallback ──────────────
     event.respondWith(
         fetch(request)
             .then((res) => {
-                // Only cache successful non-opaque responses
+                // Only cache successful, non-opaque responses
                 if (res.ok && res.type !== 'opaque') {
                     const clone = res.clone();
-                    // Don't cache API/Firebase/dynamic responses to avoid stale data
-                    const isDynamic =
-                        url.pathname.startsWith('/api/') ||
-                        url.hostname.includes('firebase') ||
-                        url.pathname.startsWith('/_next/data/') ||
-                        url.searchParams.has('_rsc');
-                    if (!isDynamic) {
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                    }
+                    caches
+                        .open(CACHE_NAME)
+                        .then((cache) => cache.put(request, clone))
+                        .catch(() => {}); // Ignore Cache.put() errors (quota, etc.)
                 }
                 return res;
             })
-            .catch(() => caches.match(request).then(cached => cached || Response.error()))
+            .catch(() =>
+                caches.match(request).then((cached) => {
+                    // Return cached version if available, otherwise let the browser
+                    // handle the failure naturally (don't return Response.error()).
+                    if (cached) return cached;
+                    // Return a minimal 503 response instead of crashing
+                    return new Response('Service Unavailable', {
+                        status: 503,
+                        statusText: 'Service Unavailable',
+                        headers: { 'Content-Type': 'text/plain' },
+                    });
+                })
+            )
     );
 });
