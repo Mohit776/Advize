@@ -168,7 +168,7 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
 
       {/* ── Content ── */}
       <div className="px-4 pb-3">
-        <p className="text-sm text-foreground/90 leading-[1.7] whitespace-pre-wrap break-words">
+        <p className="text-base text-foreground/90 leading-[1.7] whitespace-pre-wrap break-words">
           {renderInlineText(
             isLong && !expanded
               ? safeContent.slice(0, CONTENT_CLAMP_LENGTH) + '…'

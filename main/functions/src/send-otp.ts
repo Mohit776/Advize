@@ -4,8 +4,10 @@ import {getAuth} from "firebase-admin/auth";
 import * as nodemailer from "nodemailer";
 import {defineSecret} from "firebase-functions/params";
 
-const gmailEmail = defineSecret("GMAIL_EMAIL");
-const gmailAppPassword = defineSecret("GMAIL_APP_PASSWORD");
+const smtpHost = defineSecret("SMTP_HOST");
+const smtpPort = defineSecret("SMTP_PORT");
+const smtpAppPassword = defineSecret("SMTP_APP_PASSWORD");
+const smtpMail = defineSecret("SMTP_MAIL");
 
 const db = getFirestore();
 
@@ -39,7 +41,7 @@ function buildOtpEmailHtml(otp: string): string {
 export const sendOtp = onCall(
 	{
 		region: "us-central1",
-		secrets: [gmailEmail, gmailAppPassword],
+		secrets: [smtpHost, smtpPort, smtpAppPassword, smtpMail],
 	},
 	async (request) => {
 		const uid = request.data?.uid;
@@ -92,16 +94,18 @@ export const sendOtp = onCall(
 
 		// Send email
 		const transporter = nodemailer.createTransport({
-			service: "gmail",
+			host: smtpHost.value().trim(),
+			port: parseInt(smtpPort.value().trim(), 10),
+			secure: parseInt(smtpPort.value().trim(), 10) === 465,
 			auth: {
-				user: gmailEmail.value(),
-				pass: gmailAppPassword.value(),
+				user: smtpMail.value().trim(),
+				pass: smtpAppPassword.value().trim(),
 			},
 		});
 
 		try {
 			await transporter.sendMail({
-				from: `"Advize" <${gmailEmail.value()}>`,
+				from: `"Advize" <${smtpMail.value().trim()}>`,
 				to: email,
 				subject: "Your Advize Verification Code",
 				html: buildOtpEmailHtml(otp),
