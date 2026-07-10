@@ -253,7 +253,7 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
             if (typeof window !== 'undefined' && navigator.share) {
               navigator.share({ 
                 title: `${post.authorName} on Advize`,
-                text: safeContent.slice(0, 100) + '...',
+                text: safeContent.slice(0, 250) + '...',
                 url: url
               }).catch(() => {});
             } else {
