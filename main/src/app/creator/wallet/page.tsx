@@ -11,19 +11,31 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { WithdrawModal } from './_components/withdraw-modal';
-import { TransactionTable } from './_components/transaction-table';
-import { WalletAnalytics } from './_components/wallet-analytics';
+import { useMemo, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import dynamic from 'next/dynamic';
+
+const WithdrawModal = dynamic(
+  () => import('./_components/withdraw-modal').then((m) => ({ default: m.WithdrawModal })),
+  { loading: () => <Skeleton className="h-10 w-32" />, ssr: false }
+);
+const TransactionTable = dynamic(
+  () => import('./_components/transaction-table').then((m) => ({ default: m.TransactionTable })),
+  { loading: () => <Skeleton className="h-64 w-full" />, ssr: false }
+);
+const WalletAnalytics = dynamic(
+  () => import('./_components/wallet-analytics').then((m) => ({ default: m.WalletAnalytics })),
+  { loading: () => <Skeleton className="h-48 w-full" />, ssr: false }
+);
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import type { Earning, Transaction } from '@/lib/types';
-import { useMemo, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 
 const savedMethods = [

@@ -31,26 +31,6 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-  const cardRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { rootMargin: '0px 0px -100px 0px' } // Trigger slightly before it fully enters
-    );
-    
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   const isAuthor = user?.uid === post.authorId;
   const safeContent = post.content ?? '';
@@ -68,14 +48,12 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
   return (
     <article
       id={`post-${post.id}`}
-      ref={cardRef}
       className={cn(
         'relative overflow-hidden',
         'bg-[#0f0f13] border border-white/[0.06]',
-        'rounded-2xl',
-        'transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]',
-        'hover:border-white/[0.12] hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]',
-        isVisible ? 'opacity-100 translate-y-0 scale-100 shadow-2xl shadow-black/50' : 'opacity-0 translate-y-12 scale-[0.98]'
+        'rounded-2xl shadow-2xl shadow-black/50',
+        'transition-all duration-300',
+        'hover:border-white/[0.12] hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
       )}
     >
       {/* Subtle gradient glow at top */}
@@ -88,14 +66,15 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
           className="flex items-center gap-3 flex-1 min-w-0 group"
         >
           <div className="relative flex-shrink-0">
-            <Avatar className="h-10 w-10 ring-2 ring-transparent group-hover:ring-primary/50 transition-all duration-300">
-              <AvatarImage src={post.authorAvatar ?? undefined} />
-              <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-bold text-sm">
-                {post.authorName?.[0]?.toUpperCase() ?? '?'}
-              </AvatarFallback>
-            </Avatar>
+            <div className="h-10 w-10 rounded-full ring-2 ring-transparent group-hover:ring-primary/50 transition-all duration-300 overflow-hidden relative bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+              {post.authorAvatar ? (
+                <Image src={post.authorAvatar} alt={post.authorName} fill className="object-cover" sizes="40px" />
+              ) : (
+                <span className="text-primary font-bold text-sm">{post.authorName?.[0]?.toUpperCase() ?? '?'}</span>
+              )}
+            </div>
             {/* Online indicator */}
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0f0f13] bg-green-500" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0f0f13] bg-green-500 z-10" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -201,7 +180,6 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
                 height={0}
                 sizes="(max-width: 768px) 100vw, 680px"
                 className="w-full h-auto block transition-transform duration-500 hover:scale-[1.02]"
-                unoptimized
               />
               {/* Subtle overlay on hover */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
@@ -209,12 +187,16 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
           </DialogTrigger>
           <DialogContent className="max-w-[90vw] max-h-[90vh] w-fit p-0 overflow-hidden border-none bg-transparent shadow-none flex justify-center items-center">
             <DialogTitle className="sr-only">View Image</DialogTitle>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={post.imageUrl}
-              alt="Post image full"
-              className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
-            />
+            <div className="relative w-[90vw] max-w-5xl h-[85vh]">
+              <Image
+                src={post.imageUrl}
+                alt="Post image full"
+                fill
+                className="object-contain rounded-xl shadow-2xl"
+                sizes="90vw"
+                priority
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}

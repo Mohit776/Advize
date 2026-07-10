@@ -6,8 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useFirestore, useUser } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { Building2, User, ExternalLink, MapPin, Link as LinkIcon, Sparkles, TrendingUp } from 'lucide-react';
 
 interface UserProfile {
@@ -25,25 +25,15 @@ interface UserProfile {
 
 export function ProfileCard() {
   const firestore = useFirestore();
-  const { user } = useUser();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-    const fetch = async () => {
-      try {
-        const snap = await getDoc(doc(firestore, 'users', user.uid));
-        if (snap.exists()) setProfile(snap.data() as UserProfile);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetch();
-  }, [user, firestore]);
+  const { user, isUserLoading } = useUser();
+  
+  const userRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
+  );
+  
+  const { data: profile, isLoading: isProfileLoading } = useDoc<UserProfile>(userRef);
+  const isLoading = isUserLoading || isProfileLoading;
 
   if (!user) return null;
 

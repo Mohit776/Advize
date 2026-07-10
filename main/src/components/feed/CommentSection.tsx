@@ -6,10 +6,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { addComment, deleteComment, subscribeToComments, FeedComment } from '@/lib/feed';
 import { formatDistanceToNow } from 'date-fns';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { renderInlineText } from '@/lib/render-text';
 
 interface CommentSectionProps {
@@ -24,26 +24,17 @@ export function CommentSection({ postId, isOpen }: CommentSectionProps) {
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userRole, setUserRole] = useState<'creator' | 'business'>('creator');
-  const [userName, setUserName] = useState('');
-  const [userAvatar, setUserAvatar] = useState<string | undefined>();
+  const userRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile } = useDoc<any>(userRef);
+
+  const userRole = userProfile?.role ?? 'creator';
+  const userName = userProfile?.displayName ?? userProfile?.name ?? user?.email ?? 'User';
+  const userAvatar = userProfile?.logoUrl ?? userProfile?.photoURL ?? userProfile?.avatar ?? undefined;
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Fetch current user's profile info once
-  useEffect(() => {
-    if (!user) return;
-    const fetchProfile = async () => {
-      const snap = await getDoc(doc(firestore, 'users', user.uid));
-      if (snap.exists()) {
-        const d = snap.data();
-        setUserRole(d.role ?? 'creator');
-        setUserName(d.displayName ?? d.name ?? user.email ?? 'User');
-        setUserAvatar(d.logoUrl ?? d.photoURL ?? d.avatar ?? undefined);
-      }
-    };
-    fetchProfile();
-  }, [user, firestore]);
 
   // Subscribe to real-time comments only when open
   useEffect(() => {

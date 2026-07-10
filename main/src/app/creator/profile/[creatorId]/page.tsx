@@ -39,15 +39,22 @@ import type { WishlistItem, Campaign, CollaborationRequest, Notification, Earnin
 import { useCollection, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, orderBy, updateDoc, deleteField } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useToast } from '@/hooks/use-toast';
 import { CollaborateModal } from '@/app/creator/profile/_components/collaborate-modal';
 import { CollaborationRequestCard } from '@/app/creator/profile/_components/collaboration-request-card';
 import { useParams, useSearchParams } from 'next/navigation';
 import { CampaignCard } from '@/app/campaigns/_components/campaign-card';
 import { InstagramAnalyticsCard } from '@/app/creator/profile/_components/instagram-analytics-card';
-import { AutoDMCard } from '@/app/creator/profile/_components/auto-dm-card';
-import { FeaturedPostsSection } from '@/app/creator/profile/_components/featured-posts-section';
+const AutoDMCard = dynamic(
+  () => import('@/app/creator/profile/_components/auto-dm-card').then((m) => ({ default: m.AutoDMCard })),
+  { loading: () => <Skeleton className="h-64 w-full rounded-xl" />, ssr: false }
+);
+const FeaturedPostsSection = dynamic(
+  () => import('@/app/creator/profile/_components/featured-posts-section').then((m) => ({ default: m.FeaturedPostsSection })),
+  { loading: () => <Skeleton className="h-64 w-full rounded-xl" />, ssr: false }
+);
 
 function MyCampaignsFeed({ userId }: { userId: string }) {
   const firestore = useFirestore();

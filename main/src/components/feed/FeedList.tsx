@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFirestore, useUser } from '@/firebase';
 import { FeedPost, getPosts, batchGetLikedPostIds, deletePost, scorePosts } from '@/lib/feed';
 import { VirtualPostCard } from './VirtualPostCard';
-import { DocumentSnapshot, doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { DocumentSnapshot, doc, getDoc, collection, getDocs, query, where, documentId } from 'firebase/firestore';
 
 const PAGE_SIZE = 8;
 
@@ -15,7 +15,6 @@ const PAGE_SIZE = 8;
 // Persists for the lifetime of the browser tab; avoids re-fetching the same
 // author docs across page loads.
 const userCache = new Map<string, { username: string | null, avatar: string | null }>();
-
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function PostCardSkeleton() {
@@ -132,7 +131,7 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
           isLiked: likedIds.has(post.id),
         }));
 
-        // 2. Backfill author information — only for IDs not already in the cache
+        // 2. Backfill author information — ONLY for missing data using a single batch query (fixes N+1)
         const uncachedIds = [
           ...new Set(
             withLike
@@ -142,18 +141,25 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
         ];
 
         if (uncachedIds.length > 0) {
-          const userDocs = await Promise.all(
-            uncachedIds.map((uid) => getDoc(doc(firestore, 'users', uid)))
-          );
-          userDocs.forEach((snap) => {
-            if (snap.exists()) {
+          try {
+            // Firestore 'in' queries are limited to 30 items, but PAGE_SIZE is 8 so this is safe.
+            const q = query(
+              collection(firestore, 'users'),
+              where(documentId(), 'in', uncachedIds)
+            );
+            const userDocs = await getDocs(q);
+            
+            // Mark all requested IDs as cached to prevent re-fetching failures
+            uncachedIds.forEach(id => userCache.set(id, { username: null, avatar: null }));
+            
+            userDocs.forEach((snap) => {
               const d = snap.data();
               const avatar = d.logoUrl ?? d.photoURL ?? d.avatar ?? null;
               userCache.set(snap.id, { username: d.username ?? null, avatar });
-            } else {
-              userCache.set(snap.id, { username: null, avatar: null });
-            }
-          });
+            });
+          } catch (e) {
+            console.warn('[feed] Failed to backfill user docs:', e);
+          }
         }
 
         // Merge user info from cache into posts that are missing it
@@ -164,7 +170,6 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
             if (!post.authorAvatar && cached.avatar) post.authorAvatar = cached.avatar;
           }
         });
-
         // 3. Score & re-rank using interests + freshness + follow boost
         const rawPosts = withLike.map(({ post }) => post);
         const ranked = scorePosts(rawPosts, userInterestsRef.current, followedIdsRef.current);
@@ -189,35 +194,34 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
     loadPage(null, false).finally(() => setIsLoading(false));
   }, [loadPage]);
 
-  // ── Infinite scroll — window scroll listener ─────────────────────────────
+  // ── Infinite scroll — IntersectionObserver on sentinel ──────────────────────
+  // NOTE: `isLoading` is included so the effect re-runs after the initial page
+  // load finishes and the sentinel div actually mounts (early return guards
+  // prevent the sentinel from rendering while isLoading=true).
   useEffect(() => {
-    if (!hasMore) return;
+    if (!hasMore || isLoading) return;
 
-    const checkAndLoad = async () => {
-      if (isLoadingMoreRef.current || !hasMore) return;
-      // Trigger when user is within 400px of page bottom
-      const nearBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 400;
-      if (nearBottom) {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      async ([entry]) => {
+        if (!entry.isIntersecting || isLoadingMoreRef.current) return;
         isLoadingMoreRef.current = true;
         setIsLoadingMore(true);
         await loadPage(cursorRef.current, true);
         setIsLoadingMore(false);
         isLoadingMoreRef.current = false;
-      }
-    };
+      },
+      // Fire when the sentinel is 200px away from the viewport edge
+      { rootMargin: '200px' }
+    );
 
-    // Check immediately in case all posts fit within the viewport
-    checkAndLoad();
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, loadPage]);
 
-    window.addEventListener('scroll', checkAndLoad, { passive: true });
-    window.addEventListener('resize', checkAndLoad, { passive: true });
 
-    return () => {
-      window.removeEventListener('scroll', checkAndLoad);
-      window.removeEventListener('resize', checkAndLoad);
-    };
-  }, [hasMore, loadPage]);
 
   // ── Stable delete handler — useCallback prevents memo invalidation ─────────
   const handleDelete = useCallback(
