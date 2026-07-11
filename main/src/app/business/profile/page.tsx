@@ -292,7 +292,7 @@ function BusinessProfileContent() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                <div className="flex items-center justify-start sm:justify-end gap-2 flex-shrink-0 flex-wrap mt-4 sm:mt-0 w-full sm:w-auto">
                   {/* Share button — visible to everyone */}
                   <Button
                     variant="outline"
@@ -314,12 +314,12 @@ function BusinessProfileContent() {
                           Dashboard
                         </Link>
                       </Button>
-                      <Button asChild variant="outline" size="icon">
+                      <Button asChild variant="outline" size="icon" className="h-9 w-9">
                         <Link href="/business/messages">
                           <MessageSquare className="h-4 w-4" />
                         </Link>
                       </Button>
-                      <Button asChild variant="outline" size="icon">
+                      <Button asChild variant="outline" size="icon" className="h-9 w-9">
                         <Link href="/business/profile/edit">
                           <Pencil className="h-4 w-4" />
                         </Link>

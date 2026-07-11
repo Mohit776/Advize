@@ -318,7 +318,7 @@ export function PublicBusinessProfileView({ data }: { data: PublicBusinessProfil
                   </div>
                 </div>
                 {/* Actions */}
-                <div className="flex items-center gap-2 mt-4 md:mt-0 flex-shrink-0">
+                <div className="flex items-center justify-start md:justify-end gap-2 flex-shrink-0 flex-wrap mt-4 md:mt-0 w-full md:w-auto">
                   <FollowButton targetUserId={data.businessId} size="sm" />
                   <Button size="sm" variant="outline" onClick={handleShare} className="gap-2">
                     <Share2 className="h-4 w-4" />

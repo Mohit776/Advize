@@ -159,6 +159,42 @@ export async function getPosts(
 }
 
 /**
+ * Search all posts in the database.
+ * Note: This fetches all posts and filters client-side.
+ */
+export async function searchGlobalPosts(
+  firestore: Firestore,
+  searchQuery: string
+): Promise<FeedPost[]> {
+  const postsRef = collection(firestore, 'posts');
+  const snapshot = await getDocs(postsRef);
+  
+  const lowerQuery = searchQuery.toLowerCase();
+  const results: FeedPost[] = [];
+  
+  snapshot.forEach((d) => {
+    const data = d.data();
+    if (
+      data.content?.toLowerCase().includes(lowerQuery) ||
+      data.authorName?.toLowerCase().includes(lowerQuery) ||
+      data.authorUsername?.toLowerCase().includes(lowerQuery) ||
+      data.title?.toLowerCase().includes(lowerQuery)
+    ) {
+      results.push({ id: d.id, ...(data as Omit<FeedPost, 'id'>) });
+    }
+  });
+  
+  // Sort results by newest first
+  results.sort((a, b) => {
+    const aTime = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : (a.createdAt as any).seconds * 1000;
+    const bTime = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : (b.createdAt as any).seconds * 1000;
+    return bTime - aTime;
+  });
+  
+  return results;
+}
+
+/**
  * Score and re-rank posts using a blended Interest + Freshness signal.
  *
  * Formula (weights configurable):

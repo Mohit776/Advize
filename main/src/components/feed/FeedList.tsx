@@ -5,7 +5,7 @@ import { Loader2, RefreshCw, Rss } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFirestore, useUser } from '@/firebase';
-import { FeedPost, getPosts, batchGetLikedPostIds, deletePost, scorePosts } from '@/lib/feed';
+import { FeedPost, getPosts, batchGetLikedPostIds, deletePost, scorePosts, searchGlobalPosts } from '@/lib/feed';
 import { VirtualPostCard } from './VirtualPostCard';
 import { DocumentSnapshot, doc, getDoc, collection, getDocs, query, where, documentId } from 'firebase/firestore';
 
@@ -58,6 +58,9 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userInterests, setUserInterests] = useState<string[]>([]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [searchResults, setSearchResults] = useState<PostWithLike[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const cursorRef = useRef<DocumentSnapshot | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -110,6 +113,81 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
     };
     fetchFollowed();
   }, [user, firestore]);
+
+  // ── Global Search ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!debouncedSearchQuery?.trim()) {
+      setSearchResults(null);
+      return;
+    }
+
+    const performSearch = async () => {
+      setIsSearching(true);
+      try {
+        const rawResults = await searchGlobalPosts(firestore, debouncedSearchQuery);
+        
+        const postIds = rawResults.map(p => p.id);
+        const currentUser = userRef.current;
+        const likedIds = currentUser 
+          ? await batchGetLikedPostIds(firestore, currentUser.uid, postIds)
+          : new Set<string>();
+
+        const withLike = rawResults.map(post => ({
+          post,
+          isLiked: likedIds.has(post.id)
+        }));
+
+        const uncachedIds = [
+          ...new Set(
+            withLike
+              .filter(({ post }) => (!post.authorUsername || !post.authorAvatar) && !userCache.has(post.authorId))
+              .map(({ post }) => post.authorId)
+          ),
+        ];
+
+        if (uncachedIds.length > 0) {
+          try {
+            for (let i = 0; i < uncachedIds.length; i += 30) {
+              const chunk = uncachedIds.slice(i, i + 30);
+              const q = query(collection(firestore, 'users'), where(documentId(), 'in', chunk));
+              const userDocs = await getDocs(q);
+              chunk.forEach(id => userCache.set(id, { username: null, avatar: null }));
+              userDocs.forEach((snap) => {
+                const d = snap.data();
+                const avatar = d.logoUrl ?? d.photoURL ?? d.avatar ?? null;
+                userCache.set(snap.id, { username: d.username ?? null, avatar });
+              });
+            }
+          } catch (e) {
+            console.warn('[feed] Failed to backfill user docs for search:', e);
+          }
+        }
+
+        withLike.forEach(({ post }) => {
+          const cached = userCache.get(post.authorId);
+          if (cached) {
+            if (!post.authorUsername && cached.username) post.authorUsername = cached.username;
+            if (!post.authorAvatar && cached.avatar) post.authorAvatar = cached.avatar;
+          }
+        });
+
+        setSearchResults(withLike);
+      } catch (e) {
+        console.error('Search failed:', e);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedSearchQuery, firestore]);
 
   // ── Load a page ─────────────────────────────────────────────────────────────
   const loadPage = useCallback(
@@ -246,6 +324,15 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const filteredItems = useMemo(() => {
+    if (searchResults !== null) {
+      if (tab === 'following' && followedIds.size > 0) {
+        return searchResults.filter(({ post }) => followedIds.has(post.authorId));
+      } else if (tab === 'following' && followedIds.size === 0) {
+        return [];
+      }
+      return searchResults;
+    }
+
     // First filter by following tab if applicable
     let base = items;
     if (tab === 'following' && followedIds.size > 0) {
@@ -253,7 +340,7 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
     } else if (tab === 'following' && followedIds.size === 0) {
       base = []; // no follows yet → empty following feed
     }
-    // Then apply search query
+    // Then apply search query (fallback while debouncing)
     if (!searchQuery?.trim()) return base;
     const lower = searchQuery.toLowerCase();
     return base.filter(({ post }) =>
@@ -261,9 +348,9 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
       post.authorName.toLowerCase().includes(lower) ||
       (post.authorUsername && post.authorUsername.toLowerCase().includes(lower))
     );
-  }, [items, searchQuery, tab, followedIds]);
+  }, [items, searchResults, searchQuery, tab, followedIds]);
 
-  if (isLoading) {
+  if (isLoading || isSearching) {
     return (
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
@@ -333,10 +420,10 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
       ))}
 
       {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="h-4" />
+      {!searchResults && <div ref={sentinelRef} className="h-4" />}
 
       {/* Load-more — visible button + auto-trigger via sentinel */}
-      {hasMore && (
+      {!searchResults && hasMore && (
         <div className="flex justify-center py-4">
           <Button
             id="feed-load-more-btn"
@@ -363,7 +450,7 @@ export function FeedList({ searchQuery = '', tab = 'forYou' }: { searchQuery?: s
       )}
 
       {/* End of feed */}
-      {!hasMore && items.length > 0 && (
+      {!searchResults && !hasMore && items.length > 0 && (
         <p className="text-center text-xs text-muted-foreground/50 py-4">
           You&apos;ve reached the end of the feed
         </p>

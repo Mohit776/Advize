@@ -788,7 +788,7 @@ export default function PublicCreatorProfilePage() {
         </div>
         <div className="p-4 md:p-6">
           <div className="relative flex flex-col md:flex-row md:items-end md:gap-6 -mt-[4.5rem]">
-            <div className={`relative h-28 w-28 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden shadow-2xl flex-shrink-0 mx-auto md:mx-0 ring-4 ring-primary/10`}>
+            <div className={`relative h-28 w-28 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden shadow-2xl flex-shrink-0 ring-4 ring-primary/10`}>
               <Image
                 src={userData?.logoUrl || "https://picsum.photos/seed/creator-avatar/200/200"}
                 alt="Creator Avatar"
@@ -798,10 +798,10 @@ export default function PublicCreatorProfilePage() {
                 data-ai-hint="creator portrait"
               />
             </div>
-            <div className="mt-4 md:mt-0 flex-1 min-w-0 text-center md:text-left">
+            <div className="mt-4 md:mt-0 flex-1 min-w-0 text-left">
               <div className="md:flex justify-between items-start gap-4">
-                <div className="min-w-0 flex flex-col items-center md:items-start">
-                  <div className="flex items-center justify-center md:justify-start gap-2">
+                <div className="min-w-0 flex flex-col items-start">
+                  <div className="flex items-center justify-start gap-2">
                     <h1 className="text-2xl md:text-3xl font-bold font-headline truncate">
                       {userData.name}
                     </h1>
@@ -811,9 +811,9 @@ export default function PublicCreatorProfilePage() {
                     {userData.email}
                   </p>
                 </div>
-                <div className="flex items-center justify-center md:justify-end space-x-2 flex-shrink-0 mt-4 md:mt-0 w-full md:w-auto">
+                <div className="flex items-center justify-start md:justify-end space-x-2 flex-shrink-0 mt-4 md:mt-0 w-full md:w-auto">
                   {isOwnProfile ? (
-                    <div className="flex flex-wrap justify-center md:justify-end gap-2 w-full md:w-auto">
+                    <div className="flex flex-wrap justify-start md:justify-end gap-2 w-full md:w-auto">
                       <Button asChild size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/20 transition-all border-0">
                         <Link href="/campaigns">
                           <Search className="mr-2 h-4 w-4" />
@@ -840,7 +840,7 @@ export default function PublicCreatorProfilePage() {
               </div>
             </div>
           </div>
-          <div className="mt-6 md:mt-4 flex flex-wrap items-center justify-center md:justify-start gap-x-2 gap-y-2">
+          <div className="mt-6 md:mt-4 flex flex-wrap items-center justify-start gap-x-2 gap-y-2">
             {/* Creator Type */}
             {creatorProfile.creatorType && (
               Array.isArray(creatorProfile.creatorType) ? (
@@ -860,7 +860,7 @@ export default function PublicCreatorProfilePage() {
               <Badge key={cat} variant="secondary" className="bg-secondary/40 hover:bg-secondary/60 backdrop-blur-sm border-white/5 transition-colors">{cat}</Badge>
             ))}
           </div>
-          <div className="mt-5 flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-3 text-sm text-muted-foreground">
+          <div className="mt-5 flex flex-wrap justify-start gap-x-4 gap-y-3 text-sm text-muted-foreground">
             {/* Structured location */}
             {(creatorProfile.city || creatorProfile.state || creatorProfile.country) && (
               <div className="flex items-center gap-1.5 bg-secondary/20 px-3 py-1.5 rounded-full border border-white/5 shadow-sm">
