@@ -251,17 +251,17 @@ function CampaignPortfolio({ userId }: { userId: string }) {
   const totalEngagements = submissions?.filter(s => s.status === 'approved').length || 0;
 
   return (
-    <Card>
+    <Card className="border-white/5 shadow-md">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
+              <Briefcase className="h-5 w-5 text-primary" />
               Campaign Portfolio
             </CardTitle>
             <CardDescription>Past brand collaborations and campaigns</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/30">
               {completedCount} Completed
             </Badge>
@@ -276,7 +276,7 @@ function CampaignPortfolio({ userId }: { userId: string }) {
       <CardContent>
         {/* Summary Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-          <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-4 text-center">
+          <div className="col-span-2 sm:col-span-1 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-4 text-center">
             <p className="text-2xl font-bold">{campaigns.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Total Campaigns</p>
           </div>
@@ -307,7 +307,7 @@ function CampaignPortfolio({ userId }: { userId: string }) {
             return (
               <div
                 key={campaign.id}
-                className="group relative rounded-xl border bg-card/50 hover:bg-card/80 transition-all p-4 space-y-3"
+                className="group relative rounded-xl border border-white/5 bg-card/30 hover:bg-card/60 transition-all p-4 space-y-3"
               >
                 {/* Brand Header */}
                 <div className="flex items-center gap-3">
@@ -332,10 +332,10 @@ function CampaignPortfolio({ userId }: { userId: string }) {
                     variant={campaign.status === 'Completed' ? 'secondary' : 'default'}
                     className={
                       campaign.status === 'Completed'
-                        ? 'bg-green-500/10 text-green-500 border-green-500/30'
+                        ? 'bg-green-500/10 text-green-500 border-green-500/30 whitespace-nowrap'
                         : campaign.status === 'Active'
-                          ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
-                          : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
+                          ? 'bg-blue-500/10 text-blue-500 border-blue-500/30 whitespace-nowrap'
+                          : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30 whitespace-nowrap'
                     }
                   >
                     {campaign.status}
@@ -345,24 +345,24 @@ function CampaignPortfolio({ userId }: { userId: string }) {
                 {/* Category & Content Type */}
                 <div className="flex flex-wrap gap-1.5">
                   {campaign.category && (
-                    <Badge variant="outline" className="text-xs">{campaign.category}</Badge>
+                    <Badge variant="outline" className="text-xs bg-background/50">{campaign.category}</Badge>
                   )}
                   {campaign.contentType && (
-                    <Badge variant="outline" className="text-xs">{campaign.contentType}</Badge>
+                    <Badge variant="outline" className="text-xs bg-background/50">{campaign.contentType}</Badge>
                   )}
                 </div>
 
                 {/* Platforms & Date */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground mt-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {campaign.platforms?.map(platform => (
-                      <Badge key={platform} variant="secondary" className="text-[10px] px-1.5 py-0">
+                      <Badge key={platform} variant="secondary" className="text-[10px] px-1.5 py-0 bg-secondary/30">
                         {platform}
                       </Badge>
                     ))}
                   </div>
                   {startDate && (
-                    <span>
+                    <span className="whitespace-nowrap shrink-0 text-right ml-auto">
                       {startDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
                       {endDate && ` – ${endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`}
                     </span>
@@ -774,7 +774,7 @@ export default function PublicCreatorProfilePage() {
   return (
     <div className="w-full mx-auto space-y-6">
       {/* Header Section */}
-      <Card className="overflow-hidden shadow-lg border-white/10 bg-card">
+      <Card className="overflow-hidden shadow-xl border-white/10 bg-card/80 backdrop-blur-xl">
         <div className={`relative h-36 md:h-48 w-full bg-accent/10`}>
           <Image
             src={creatorProfile?.bannerUrl || "https://picsum.photos/seed/creator-banner/1200/400"}
@@ -788,7 +788,7 @@ export default function PublicCreatorProfilePage() {
         </div>
         <div className="p-4 md:p-6">
           <div className="relative flex flex-col md:flex-row md:items-end md:gap-6 -mt-[4.5rem]">
-            <div className={`relative h-28 w-28 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden shadow-lg flex-shrink-0`}>
+            <div className={`relative h-28 w-28 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden shadow-2xl flex-shrink-0 mx-auto md:mx-0 ring-4 ring-primary/10`}>
               <Image
                 src={userData?.logoUrl || "https://picsum.photos/seed/creator-avatar/200/200"}
                 alt="Creator Avatar"
@@ -798,10 +798,10 @@ export default function PublicCreatorProfilePage() {
                 data-ai-hint="creator portrait"
               />
             </div>
-            <div className="mt-4 md:mt-0 flex-1 min-w-0">
+            <div className="mt-4 md:mt-0 flex-1 min-w-0 text-center md:text-left">
               <div className="md:flex justify-between items-start gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex flex-col items-center md:items-start">
+                  <div className="flex items-center justify-center md:justify-start gap-2">
                     <h1 className="text-2xl md:text-3xl font-bold font-headline truncate">
                       {userData.name}
                     </h1>
@@ -811,10 +811,10 @@ export default function PublicCreatorProfilePage() {
                     {userData.email}
                   </p>
                 </div>
-                <div className="flex items-center space-x-2 flex-shrink-0 mt-4 md:mt-0">
+                <div className="flex items-center justify-center md:justify-end space-x-2 flex-shrink-0 mt-4 md:mt-0 w-full md:w-auto">
                   {isOwnProfile ? (
-                    <div className="flex flex-wrap gap-2">
-                      <Button asChild size="sm">
+                    <div className="flex flex-wrap justify-center md:justify-end gap-2 w-full md:w-auto">
+                      <Button asChild size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/20 transition-all border-0">
                         <Link href="/campaigns">
                           <Search className="mr-2 h-4 w-4" />
                           Explore
@@ -831,44 +831,54 @@ export default function PublicCreatorProfilePage() {
                     </div>
                   ) : (
                     <CollaborateModal creatorName={userData.name} creatorId={userIdToView!}>
-                      <Button>Collaborate</Button>
+                      <Button className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 shadow-md shadow-pink-500/20 transition-all border-0">
+                        Collaborate
+                      </Button>
                     </CollaborateModal>
                   )}
                 </div>
               </div>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
+          <div className="mt-6 md:mt-4 flex flex-wrap items-center justify-center md:justify-start gap-x-2 gap-y-2">
             {/* Creator Type */}
             {creatorProfile.creatorType && (
-              <Badge variant="default" className="bg-primary/10 text-primary border-primary/30">
-                {Array.isArray(creatorProfile.creatorType) ? creatorProfile.creatorType.join(' • ') : creatorProfile.creatorType}
-              </Badge>
+              Array.isArray(creatorProfile.creatorType) ? (
+                creatorProfile.creatorType.map((type: string) => (
+                  <Badge key={type} variant="default" className="bg-gradient-to-r from-primary/20 to-primary/10 text-primary border-primary/30 shadow-sm backdrop-blur-md">
+                    {type}
+                  </Badge>
+                ))
+              ) : (
+                <Badge variant="default" className="bg-gradient-to-r from-primary/20 to-primary/10 text-primary border-primary/30 shadow-sm backdrop-blur-md">
+                  {creatorProfile.creatorType}
+                </Badge>
+              )
             )}
             {/* Niche badges */}
             {(creatorProfile.categories || []).map((cat: string) => (
-              <Badge key={cat} variant="secondary">{cat}</Badge>
+              <Badge key={cat} variant="secondary" className="bg-secondary/40 hover:bg-secondary/60 backdrop-blur-sm border-white/5 transition-colors">{cat}</Badge>
             ))}
           </div>
-          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          <div className="mt-5 flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-3 text-sm text-muted-foreground">
             {/* Structured location */}
             {(creatorProfile.city || creatorProfile.state || creatorProfile.country) && (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4" />
+              <div className="flex items-center gap-1.5 bg-secondary/20 px-3 py-1.5 rounded-full border border-white/5 shadow-sm">
+                <MapPin className="h-3.5 w-3.5 text-primary/80" />
                 {[creatorProfile.city, creatorProfile.state, creatorProfile.country].filter(Boolean).join(', ')}
               </div>
             )}
             {/* Fallback to legacy location string */}
             {!creatorProfile.city && creatorProfile.location && (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4" />
+              <div className="flex items-center gap-1.5 bg-secondary/20 px-3 py-1.5 rounded-full border border-white/5 shadow-sm">
+                <MapPin className="h-3.5 w-3.5 text-primary/80" />
                 {creatorProfile.location}
               </div>
             )}
             {/* Age */}
             {creatorProfile.age && (
-              <div className="flex items-center gap-1.5">
-                <Star className="h-4 w-4" />
+              <div className="flex items-center gap-1.5 bg-secondary/20 px-3 py-1.5 rounded-full border border-white/5 shadow-sm">
+                <Star className="h-3.5 w-3.5 text-yellow-500/80" />
                 {creatorProfile.age} yrs
               </div>
             )}
@@ -880,18 +890,23 @@ export default function PublicCreatorProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>About {userData.name}</CardTitle>
+          <Card className="border-white/5 bg-gradient-to-b from-card to-card/50 shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <span className="bg-primary/20 p-1.5 rounded-md text-primary">
+                  <Star className="h-4 w-4" />
+                </span>
+                About {userData.name}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
                 {creatorProfile.bio || "This creator hasn't written a bio yet."}
               </p>
             </CardContent>
           </Card>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full h-auto justify-start overflow-x-auto overflow-y-hidden">
+            <TabsList className="w-full h-auto justify-start overflow-x-auto overflow-y-hidden flex-nowrap pb-1">
               <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
                {isOwnProfile && (
                 <TabsTrigger value="auto-dm">

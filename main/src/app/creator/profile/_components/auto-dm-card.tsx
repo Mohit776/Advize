@@ -381,7 +381,7 @@ function MediaPicker({ accessToken, selectedId, onSelect }: { accessToken: strin
   }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 snap-x custom-scrollbar">
+    <div className="flex gap-4 overflow-x-auto pb-4 snap-x custom-scrollbar w-full min-w-0">
       {media.map(m => {
         const imgUrl = m.thumbnail_url || m.media_url;
         const isSelected = selectedId === m.id;
@@ -662,8 +662,8 @@ function RulesManager({
 
       {/* Create / Edit Form */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); else setShowForm(true); }}>
-        <DialogContent className="max-w-xl border-purple-500/20 shadow-lg shadow-purple-500/5">
-          <DialogHeader className="pb-2">
+        <DialogContent className="w-[95vw] sm:max-w-xl sm:w-full p-4 sm:p-6 rounded-2xl border-purple-500/20 shadow-lg shadow-purple-500/5 max-h-[90vh] flex flex-col">
+          <DialogHeader className="pb-2 flex-shrink-0">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 flex items-center justify-center">
                 <Sparkles className="h-4 w-4 text-purple-400" />
@@ -676,7 +676,7 @@ function RulesManager({
               Configure your auto-reply settings here.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-2 w-full min-w-0 flex-1 overflow-y-auto custom-scrollbar px-1 pb-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="auto-dm-keyword" className="text-sm font-medium">
@@ -736,7 +736,7 @@ function RulesManager({
             </div>
 
             {triggerType === 'comment_specific' && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1 w-full min-w-0">
                 <Label className="text-sm font-medium">Select a Post or Reel</Label>
                 <MediaPicker 
                   accessToken={account.access_token} 
@@ -801,14 +801,14 @@ function RulesManager({
               </div>
             )}
 
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={resetForm} className="flex-1">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2 mt-4">
+              <Button variant="outline" onClick={resetForm} className="w-full sm:flex-1">
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={isSaving || !keyword.trim() || !reply.trim() || (triggerType === 'comment_specific' && !mediaId)}
-                className="flex-1 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 border-0 text-white"
+                className="w-full sm:flex-1 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 border-0 text-white"
               >
                 {isSaving ? (
                   <>
