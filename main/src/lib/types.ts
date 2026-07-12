@@ -263,3 +263,20 @@ export type ExploreVideo = {
   isActive: boolean;
   createdAt: any;
 };
+
+/**
+ * Represents a creator result for search and recommendation in the Business Profile.
+ * Merged from `users/{userId}` and `users/{userId}/creatorProfile/{userId}`.
+ */
+export type CreatorSearchResult = {
+  userId: string;
+  name: string;
+  logoUrl?: string;
+  username?: string;
+  bio?: string;
+  categories: string[];
+  creatorType: string | string[];
+  city?: string;
+  state?: string;
+  country?: string;
+};
