@@ -37,7 +37,6 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking,
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CampaignPost } from './_components/campaign-post';
-import { CreatorSearch } from './_components/creator-search';
 import type { Campaign, Earning, Submission, Transaction } from '@/lib/types';
 import { calculateCpm } from '@/lib/utils';
 import {
@@ -348,27 +347,6 @@ function BusinessProfileContent() {
               </p>
             </CardContent>
           </Card>
-
-          {/* Find Creators — visible only to the business owner */}
-          {isOwnProfile && (
-            <Card className="shadow-lg border-white/10">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-primary" />
-                  Find Creators
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Search and discover creators that match your brand.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <CreatorSearch
-                  industryType={businessProfile.industryType}
-                  brandName={userData.name}
-                />
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Right Column */}

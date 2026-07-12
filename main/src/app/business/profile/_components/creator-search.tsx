@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Users, X, SlidersHorizontal, Sparkles, MapPin, UserCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -76,6 +76,7 @@ function CreatorCard({ creator }: { creator: CreatorSearchResult }) {
                 src={creator.logoUrl}
                 alt={creator.name}
                 fill
+                sizes="48px"
                 className="object-cover"
               />
             ) : (
@@ -87,24 +88,24 @@ function CreatorCard({ creator }: { creator: CreatorSearchResult }) {
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-sm truncate">{creator.name}</p>
+            <p className="font-semibold text-base truncate">{creator.name}</p>
             {creatorTypes[0] && (
-              <p className="text-xs text-muted-foreground truncate">{creatorTypes[0]}</p>
+              <p className="text-sm text-muted-foreground truncate">{creatorTypes[0]}</p>
             )}
           </div>
         </div>
 
         {/* Location */}
         {locationStr && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3 flex-shrink-0" />
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground capitalize">
+            <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="truncate">{locationStr}</span>
           </div>
         )}
 
         {/* Bio */}
         {creator.bio && (
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
             {creator.bio}
           </p>
         )}
@@ -116,7 +117,7 @@ function CreatorCard({ creator }: { creator: CreatorSearchResult }) {
               <Badge
                 key={cat}
                 variant="secondary"
-                className="text-[10px] px-1.5 py-0 font-medium"
+                className="text-xs px-2 py-0.5 font-medium"
               >
                 {cat}
               </Badge>
@@ -124,7 +125,7 @@ function CreatorCard({ creator }: { creator: CreatorSearchResult }) {
             {creator.categories.length > 3 && (
               <Badge
                 variant="outline"
-                className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                className="text-xs px-2 py-0.5 text-muted-foreground"
               >
                 +{creator.categories.length - 3}
               </Badge>
@@ -133,8 +134,8 @@ function CreatorCard({ creator }: { creator: CreatorSearchResult }) {
         )}
 
         {/* CTA Buttons */}
-        <div className="flex gap-2 mt-auto pt-1">
-          <Button asChild size="sm" className="flex-1 h-8 text-xs">
+        <div className="flex gap-2 mt-auto pt-2">
+          <Button asChild size="default" className="flex-1 h-9 text-sm">
             <Link href={profileUrl}>View Profile</Link>
           </Button>
         </div>
@@ -311,6 +312,10 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
   const activeFilterCount =
     selectedNiches.length + selectedTypes.length + (activeQuickNiche ? 1 : 0);
 
+  useEffect(() => {
+    fetchCreators();
+  }, [fetchCreators]);
+
   function clearAllFilters() {
     setSearchQuery('');
     setSelectedNiches([]);
@@ -372,90 +377,92 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
           )}
         </div>
 
-        {/* Niche Dropdown Filter */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                'h-10 gap-2 border-white/10 hover:border-primary/40',
-                selectedNiches.length > 0 && 'border-primary/40 text-primary'
-              )}
-              onClick={() => { if (!hasFetched) fetchCreators(); }}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Niche
-              {selectedNiches.length > 0 && (
-                <Badge className="ml-1 h-5 px-1.5 text-[10px]">
-                  {selectedNiches.length}
-                </Badge>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto">
-            <DropdownMenuLabel>Filter by Niche</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {NICHES.slice(0, 60).map((niche) => (
-              <DropdownMenuCheckboxItem
-                key={niche}
-                checked={selectedNiches.includes(niche)}
-                onCheckedChange={() => toggleNiche(niche)}
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          {/* Niche Dropdown Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-10 gap-2 border-white/10 hover:border-primary/40 flex-1 sm:flex-none',
+                  selectedNiches.length > 0 && 'border-primary/40 text-primary'
+                )}
+                onClick={() => { if (!hasFetched) fetchCreators(); }}
               >
-                {niche}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <SlidersHorizontal className="h-4 w-4" />
+                Niche
+                {selectedNiches.length > 0 && (
+                  <Badge className="ml-1 h-5 px-1.5 text-[10px]">
+                    {selectedNiches.length}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto">
+              <DropdownMenuLabel>Filter by Niche</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {NICHES.slice(0, 60).map((niche) => (
+                <DropdownMenuCheckboxItem
+                  key={niche}
+                  checked={selectedNiches.includes(niche)}
+                  onCheckedChange={() => toggleNiche(niche)}
+                >
+                  {niche}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* Creator Type Dropdown Filter */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                'h-10 gap-2 border-white/10 hover:border-primary/40',
-                selectedTypes.length > 0 && 'border-primary/40 text-primary'
-              )}
-              onClick={() => { if (!hasFetched) fetchCreators(); }}
-            >
-              <UserCircle2 className="h-4 w-4" />
-              Type
-              {selectedTypes.length > 0 && (
-                <Badge className="ml-1 h-5 px-1.5 text-[10px]">
-                  {selectedTypes.length}
-                </Badge>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto">
-            <DropdownMenuLabel>Filter by Creator Type</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {CREATOR_TYPES.map((type) => (
-              <DropdownMenuCheckboxItem
-                key={type}
-                checked={selectedTypes.includes(type)}
-                onCheckedChange={() => toggleType(type)}
+          {/* Creator Type Dropdown Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-10 gap-2 border-white/10 hover:border-primary/40 flex-1 sm:flex-none',
+                  selectedTypes.length > 0 && 'border-primary/40 text-primary'
+                )}
+                onClick={() => { if (!hasFetched) fetchCreators(); }}
               >
-                {type}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <UserCircle2 className="h-4 w-4" />
+                Type
+                {selectedTypes.length > 0 && (
+                  <Badge className="ml-1 h-5 px-1.5 text-[10px]">
+                    {selectedTypes.length}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto">
+              <DropdownMenuLabel>Filter by Creator Type</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {CREATOR_TYPES.map((type) => (
+                <DropdownMenuCheckboxItem
+                  key={type}
+                  checked={selectedTypes.includes(type)}
+                  onCheckedChange={() => toggleType(type)}
+                >
+                  {type}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* Clear All Filters */}
-        {activeFilterCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-10 text-muted-foreground hover:text-foreground gap-1"
-            onClick={clearAllFilters}
-          >
-            <X className="h-3.5 w-3.5" />
-            Clear
-          </Button>
-        )}
+          {/* Clear All Filters */}
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 text-muted-foreground hover:text-foreground gap-1"
+              onClick={clearAllFilters}
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Quick Niche Pills */}
@@ -465,7 +472,7 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
             key={niche}
             onClick={() => handleQuickNiche(niche)}
             className={cn(
-              'text-xs px-3 py-1.5 rounded-full border transition-all duration-200',
+              'text-sm px-3.5 py-1.5 rounded-full border transition-all duration-200',
               activeQuickNiche === niche
                 ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/30'
                 : 'border-white/10 text-muted-foreground hover:border-primary/40 hover:text-foreground bg-muted/40'
@@ -477,32 +484,12 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
       </div>
 
       {/* Content Area */}
-      {!hasFetched && !isLoading ? (
-        /* Initial CTA — trigger load */
-        <div
-          className="flex flex-col items-center justify-center py-14 gap-4 border-2 border-dashed border-white/10 rounded-xl cursor-pointer group hover:border-primary/30 transition-colors"
-          onClick={fetchCreators}
-        >
-          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-            <Users className="h-7 w-7 text-primary" />
-          </div>
-          <div className="text-center">
-            <p className="font-semibold">Discover Creators</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Click to load creators recommended for your brand
-            </p>
-          </div>
-          <Button size="sm" onClick={(e) => { e.stopPropagation(); fetchCreators(); }}>
-            <Sparkles className="mr-2 h-4 w-4" />
-            Find Creators
-          </Button>
-        </div>
-      ) : isLoading ? (
+      {isLoading ? (
         /* Loading Skeletons */
         <div className="space-y-4">
           <Skeleton className="h-5 w-48" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
               <CreatorCardSkeleton key={i} />
             ))}
           </div>
@@ -510,20 +497,20 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
       ) : (
         <div className="space-y-4">
           {/* Section Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {isSearchActive ? (
                 <>
                   <Search className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">
+                  <span className="text-base font-medium">
                     {displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}
                     {searchQuery && ` for "${searchQuery}"`}
                   </span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <span className="text-base font-medium">
                     Recommended for{' '}
                     <span className="text-primary">{brandName || 'Your Brand'}</span>
                     {industryType && (
@@ -551,7 +538,7 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
           {/* Creator Grid */}
           {visibleResults.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {visibleResults.map((creator) => (
                   <CreatorCard key={creator.userId} creator={creator} />
                 ))}

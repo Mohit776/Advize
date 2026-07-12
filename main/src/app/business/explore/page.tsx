@@ -1,9 +1,10 @@
 
 'use client';
 
-import { Search, MapPin, Users, Library, Club, Video, Play, Loader2 } from 'lucide-react';
+import { Search, MapPin, Users, Library, Club, Video, Play } from 'lucide-react';
 import Link from 'next/link';
 
+import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,9 +19,10 @@ import {
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useState, useRef } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { ExploreVideo } from '@/lib/types';
+import { CreatorSearch } from '../profile/_components/creator-search';
 
 const postLayouts = [
   { aspect: '9:16', span: 'col-span-1' },
@@ -35,37 +37,6 @@ const postLayouts = [
   { aspect: '4:5', span: 'col-span-1' },
   { aspect: '9:16', span: 'col-span-1' },
   { aspect: '9:16', span: 'col-span-1' },
-];
-
-const mockCreators = [
-  {
-    id: '1',
-    name: 'Aisha Sharma',
-    avatarUrl: 'https://picsum.photos/seed/creator1/100/100',
-    category: 'Lifestyle',
-    followers: '1.2M',
-  },
-  {
-    id: '2',
-    name: 'Rohan Verma',
-    avatarUrl: 'https://picsum.photos/seed/creator2/100/100',
-    category: 'Tech',
-    followers: '500K',
-  },
-  {
-    id: '3',
-    name: 'Priya Singh',
-    avatarUrl: 'https://picsum.photos/seed/creator3/100/100',
-    category: 'Food',
-    followers: '750K',
-  },
-  {
-    id: '4',
-    name: 'Karan Desai',
-    avatarUrl: 'https://picsum.photos/seed/creator4/100/100',
-    category: 'Travel',
-    followers: '320K',
-  },
 ];
 
 const aspectRatios = ['9:16', '4:5', '16:9', '1:1'];
@@ -156,6 +127,7 @@ function VideoCard({
           src={video.thumbnailUrl}
           alt={video.title}
           fill
+          sizes="(max-width: 768px) 50vw, 33vw"
           className="object-cover"
         />
       )}
@@ -184,9 +156,21 @@ function VideoCard({
 
 export default function BusinessExplorePage() {
   const [aspectFilter, setAspectFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<ExploreVideo | null>(null);
   const firestore = useFirestore();
+  const { user } = useUser();
+
+  const businessProfileRef = useMemoFirebase(
+    () => (user?.uid ? doc(firestore, `users/${user.uid}/businessProfile`, user.uid) : null),
+    [user?.uid, firestore]
+  );
+  const { data: businessProfile } = useDoc<any>(businessProfileRef);
+  
+  const userRef = useMemoFirebase(
+    () => (user?.uid ? doc(firestore, 'users', user.uid) : null),
+    [user?.uid, firestore]
+  );
+  const { data: userData } = useDoc<any>(userRef);
 
   // Fetch explore videos from Firestore (simple collection read)
   const videosQuery = useMemoFirebase(
@@ -204,34 +188,12 @@ export default function BusinessExplorePage() {
     // 2. Aspect Ratio filter
     if (aspectFilter !== 'all' && video.aspectRatio !== aspectFilter) return false;
 
-    // 3. Search Query filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      return (
-        video.title.toLowerCase().includes(query) ||
-        video.creatorName.toLowerCase().includes(query) ||
-        (video.category && video.category.toLowerCase().includes(query))
-      );
-    }
-
     return true;
   });
 
   return (
-    <div className="flex-1 space-y-6">
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          placeholder="Search for content, creators, or places..."
-          className="pl-10 h-11 bg-muted border-0 focus-visible:ring-primary"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
-      <Tabs defaultValue="library" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+    <div className="flex-1 space-y-6">      <Tabs defaultValue="library" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="library">
             <Library className="mr-2 h-4 w-4" />
             Library
@@ -239,10 +201,6 @@ export default function BusinessExplorePage() {
           <TabsTrigger value="people">
             <Users className="mr-2 h-4 w-4" />
             People
-          </TabsTrigger>
-          <TabsTrigger value="place">
-            <MapPin className="mr-2 h-4 w-4" />
-            Place
           </TabsTrigger>
           <TabsTrigger value="clubs">
             <Club className="mr-2 h-4 w-4" />
@@ -273,7 +231,7 @@ export default function BusinessExplorePage() {
 
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader size="lg" variant="muted" />
             </div>
           ) : filteredVideos && filteredVideos.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">
@@ -304,39 +262,9 @@ export default function BusinessExplorePage() {
         </TabsContent>
 
         <TabsContent value="people" className="mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {mockCreators.map((creator) => (
-              <Card key={creator.id} className="text-center hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <Image
-                    src={creator.avatarUrl}
-                    alt={creator.name}
-                    width={96}
-                    height={96}
-                    className="h-24 w-24 rounded-full mx-auto border-4 border-muted"
-                  />
-                  <h3 className="mt-4 font-bold font-headline">{creator.name}</h3>
-                  <p className="text-sm text-muted-foreground">{creator.category}</p>
-                  <p className="mt-2 text-lg font-bold">{creator.followers}</p>
-                  <p className="text-xs text-muted-foreground">Followers</p>
-                  <Button asChild className="mt-4 w-full" size="sm">
-                    <Link href={`/creator/profile/${creator.id}`}>View Profile</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <CreatorSearch industryType={businessProfile?.industryType} brandName={userData?.name} />
         </TabsContent>
 
-        <TabsContent value="place" className="mt-6">
-          <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
-            <MapPin className="mx-auto h-12 w-12 mb-4" />
-            <h3 className="mt-2 text-lg font-medium">Location Search Coming Soon</h3>
-            <p className="mt-2 text-sm max-w-xs mx-auto">
-              You'll soon be able to discover creators and content by city or region.
-            </p>
-          </div>
-        </TabsContent>
 
         <TabsContent value="clubs" className="mt-6">
           <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
