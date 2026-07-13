@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Search, Users, X, SlidersHorizontal, Sparkles, MapPin, UserCircle2 } from 'lucide-react';
+import { Search, Users, X, SlidersHorizontal, MapPin, UserCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, collectionGroup, query, where } from 'firebase/firestore';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -185,54 +185,50 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
     if (hasFetched) return;
     setIsLoading(true);
     try {
-      // Step 1: Get all users with role == 'creator' (name, logoUrl, username live here)
-      const usersSnap = await getDocs(
-        query(collection(firestore, 'users'), where('role', '==', 'creator'))
-      );
+      // Run both queries in parallel — 2 round trips instead of N+1
+      const [usersSnap, profilesSnap] = await Promise.all([
+        getDocs(query(collection(firestore, 'users'), where('role', '==', 'creator'))),
+        getDocs(collectionGroup(firestore, 'creatorProfile')),
+      ]);
 
       if (usersSnap.empty) {
         setAllCreators([]);
         return;
       }
 
-      // Step 2: Parallel-fetch each creator's profile subcollection for niche/bio/location
-      const profileFetches = usersSnap.docs.map(async (userDoc) => {
-        const userData = userDoc.data();
-        const userId = userDoc.id;
-
-        try {
-          const profileSnap = await getDoc(
-            doc(firestore, `users/${userId}/creatorProfile`, userId)
-          );
-          const profileData = profileSnap.exists() ? profileSnap.data() : {};
-
-          // Skip creators with no profile setup yet (no categories = incomplete)
-          const categories: string[] = profileData.categories || [];
-
-          return {
-            userId,
-            name: userData.name || userData.displayName || 'Creator',
-            logoUrl: userData.logoUrl || undefined,
-            username: userData.username || undefined,
-            bio: profileData.bio || undefined,
-            categories,
-            creatorType: profileData.creatorType || '',
-            city: profileData.city || undefined,
-            state: profileData.state || undefined,
-            country: profileData.country || undefined,
-          } as CreatorSearchResult;
-        } catch {
-          return null;
-        }
+      // Build a lookup map: userId → profile data  (O(n), no extra round trips)
+      const profileMap = new Map<string, Record<string, unknown>>();
+      profilesSnap.docs.forEach((profileDoc) => {
+        // The document ID is the userId (same convention as before)
+        profileMap.set(profileDoc.id, profileDoc.data() as Record<string, unknown>);
       });
 
-      const allResults = await Promise.all(profileFetches);
+      // Merge user docs with their profile data
+      const results: CreatorSearchResult[] = [];
+      usersSnap.docs.forEach((userDoc) => {
+        const userData = userDoc.data();
+        const userId = userDoc.id;
+        const profileData = profileMap.get(userId) ?? {};
 
-      // Filter out nulls and creators with no niche data at all
-      const results = allResults.filter(
-        (r): r is CreatorSearchResult =>
-          r !== null && (r.categories.length > 0 || !!r.bio)
-      );
+        const categories: string[] = (profileData.categories as string[]) || [];
+        const bio: string | undefined = (profileData.bio as string) || undefined;
+
+        // Skip creators with no profile data at all
+        if (categories.length === 0 && !bio) return;
+
+        results.push({
+          userId,
+          name: (userData.name as string) || (userData.displayName as string) || 'Creator',
+          logoUrl: (userData.logoUrl as string) || undefined,
+          username: (userData.username as string) || undefined,
+          bio,
+          categories,
+          creatorType: (profileData.creatorType as string) || '',
+          city: (profileData.city as string) || undefined,
+          state: (profileData.state as string) || undefined,
+          country: (profileData.country as string) || undefined,
+        } as CreatorSearchResult);
+      });
 
       setAllCreators(results);
     } catch (err) {
