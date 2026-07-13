@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Search, Users, X, SlidersHorizontal, MapPin, UserCircle2 } from 'lucide-react';
+import { Search, Users, X, SlidersHorizontal, MapPin, UserCircle2, User, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { collection, getDocs, collectionGroup, query, where } from 'firebase/firestore';
@@ -174,6 +174,8 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNiches, setSelectedNiches] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
+  const [selectedAgeRanges, setSelectedAgeRanges] = useState<string[]>([]);
   const [activeQuickNiche, setActiveQuickNiche] = useState<string | null>(null);
   const [allCreators, setAllCreators] = useState<CreatorSearchResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -227,6 +229,8 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
           city: (profileData.city as string) || undefined,
           state: (profileData.state as string) || undefined,
           country: (profileData.country as string) || undefined,
+          age: (profileData.age as number) || undefined,
+          gender: (profileData.gender as string) || undefined,
         } as CreatorSearchResult);
       });
 
@@ -279,14 +283,36 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
         if (!types.some((t) => selectedTypes.includes(t))) return false;
       }
 
+      // Gender filter
+      if (selectedGenders.length > 0) {
+        if (!c.gender || !selectedGenders.includes(c.gender)) return false;
+      }
+
+      // Age filter
+      if (selectedAgeRanges.length > 0) {
+        if (!c.age) return false;
+        const matchesAge = selectedAgeRanges.some(range => {
+          if (range === '13-17') return c.age! >= 13 && c.age! <= 17;
+          if (range === '18-24') return c.age! >= 18 && c.age! <= 24;
+          if (range === '25-34') return c.age! >= 25 && c.age! <= 34;
+          if (range === '35-44') return c.age! >= 35 && c.age! <= 44;
+          if (range === '45-54') return c.age! >= 45 && c.age! <= 54;
+          if (range === '55+') return c.age! >= 55;
+          return false;
+        });
+        if (!matchesAge) return false;
+      }
+
       return true;
     });
-  }, [allCreators, searchQuery, effectiveNiches, selectedTypes]);
+  }, [allCreators, searchQuery, effectiveNiches, selectedTypes, selectedGenders, selectedAgeRanges]);
 
   const isSearchActive =
     searchQuery.trim() !== '' ||
     effectiveNiches.length > 0 ||
-    selectedTypes.length > 0;
+    selectedTypes.length > 0 ||
+    selectedGenders.length > 0 ||
+    selectedAgeRanges.length > 0;
 
   const displayedResults = isSearchActive
     ? searchResults
@@ -295,7 +321,7 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
   const hasMore = visibleCount < displayedResults.length;
 
   const activeFilterCount =
-    selectedNiches.length + selectedTypes.length + (activeQuickNiche ? 1 : 0);
+    selectedNiches.length + selectedTypes.length + selectedGenders.length + selectedAgeRanges.length + (activeQuickNiche ? 1 : 0);
 
   useEffect(() => {
     fetchCreators();
@@ -305,6 +331,8 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
     setSearchQuery('');
     setSelectedNiches([]);
     setSelectedTypes([]);
+    setSelectedGenders([]);
+    setSelectedAgeRanges([]);
     setActiveQuickNiche(null);
     setVisibleCount(PAGE_SIZE);
   }
@@ -320,6 +348,20 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
   function toggleType(type: string) {
     setSelectedTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function toggleGender(gender: string) {
+    setSelectedGenders((prev) =>
+      prev.includes(gender) ? prev.filter((g) => g !== gender) : [...prev, gender]
+    );
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function toggleAgeRange(range: string) {
+    setSelectedAgeRanges((prev) =>
+      prev.includes(range) ? prev.filter((r) => r !== range) : [...prev, range]
     );
     setVisibleCount(PAGE_SIZE);
   }
@@ -430,6 +472,78 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
                   onCheckedChange={() => toggleType(type)}
                 >
                   {type}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Gender Dropdown Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-10 gap-2 border-white/10 hover:border-primary/40 flex-1 sm:flex-none',
+                  selectedGenders.length > 0 && 'border-primary/40 text-primary'
+                )}
+                onClick={() => { if (!hasFetched) fetchCreators(); }}
+              >
+                <User className="h-4 w-4" />
+                Gender
+                {selectedGenders.length > 0 && (
+                  <Badge className="ml-1 h-5 px-1.5 text-[10px]">
+                    {selectedGenders.length}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 max-h-72 overflow-y-auto">
+              <DropdownMenuLabel>Filter by Gender</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {['Male', 'Female'].map((gender) => (
+                <DropdownMenuCheckboxItem
+                  key={gender}
+                  checked={selectedGenders.includes(gender)}
+                  onCheckedChange={() => toggleGender(gender)}
+                >
+                  {gender}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Age Dropdown Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-10 gap-2 border-white/10 hover:border-primary/40 flex-1 sm:flex-none',
+                  selectedAgeRanges.length > 0 && 'border-primary/40 text-primary'
+                )}
+                onClick={() => { if (!hasFetched) fetchCreators(); }}
+              >
+                <Calendar className="h-4 w-4" />
+                Age
+                {selectedAgeRanges.length > 0 && (
+                  <Badge className="ml-1 h-5 px-1.5 text-[10px]">
+                    {selectedAgeRanges.length}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 max-h-72 overflow-y-auto">
+              <DropdownMenuLabel>Filter by Age</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {['13-17', '18-24', '25-34', '35-44', '45-54', '55+'].map((range) => (
+                <DropdownMenuCheckboxItem
+                  key={range}
+                  checked={selectedAgeRanges.includes(range)}
+                  onCheckedChange={() => toggleAgeRange(range)}
+                >
+                  {range}
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>

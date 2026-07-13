@@ -53,7 +53,8 @@ export type CreatorProfile = {
   city: string;
   state: string;
   country: string;
-  age: number;
+  age?: number;
+  gender?: string;
   /** Content niche tags — 1 to 3 items */
   categories: string[];
   /** Creator type from CREATOR_TYPES list */
@@ -279,4 +280,6 @@ export type CreatorSearchResult = {
   city?: string;
   state?: string;
   country?: string;
+  age?: number;
+  gender?: string;
 };
