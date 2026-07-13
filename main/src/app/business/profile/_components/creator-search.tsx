@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFirestore } from '@/firebase';
-import { getNichesForIndustry } from '@/lib/industry-niche-map';
 import { NICHES, CREATOR_TYPES } from '@/lib/creator-niches';
 import type { CreatorSearchResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -66,8 +65,8 @@ function CreatorCard({ creator }: { creator: CreatorSearchResult }) {
     : `/profile/${creator.userId}`;
 
   return (
-    <Card className="group border-white/10 bg-card hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5 overflow-hidden">
-      <CardContent className="p-5 flex flex-col gap-3">
+    <Card className="group border-white/10 bg-card hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5 overflow-hidden flex flex-col h-full">
+      <CardContent className="p-5 flex flex-col gap-3 flex-1">
         {/* Avatar + Name */}
         <div className="flex items-center gap-3">
           <div className="relative h-12 w-12 rounded-full overflow-hidden flex-shrink-0 bg-primary/10 border-2 border-background shadow-sm">
@@ -146,8 +145,8 @@ function CreatorCard({ creator }: { creator: CreatorSearchResult }) {
 
 function CreatorCardSkeleton() {
   return (
-    <Card className="border-white/10 bg-card overflow-hidden">
-      <CardContent className="p-5 flex flex-col gap-3">
+    <Card className="border-white/10 bg-card overflow-hidden flex flex-col h-full">
+      <CardContent className="p-5 flex flex-col gap-3 flex-1">
         <div className="flex items-center gap-3">
           <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
           <div className="flex-1 space-y-1.5">
@@ -245,19 +244,7 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
     }
   }, [firestore, hasFetched]);
 
-  // Derived: recommended niches for this brand
-  const recommendedNiches = useMemo(
-    () => getNichesForIndustry(industryType),
-    [industryType]
-  );
 
-  // Derived: recommended creators (match any recommended niche)
-  const recommendedCreators = useMemo(() => {
-    if (!allCreators) return [];
-    return allCreators.filter((c) =>
-      c.categories.some((cat) => recommendedNiches.includes(cat))
-    );
-  }, [allCreators, recommendedNiches]);
 
   // Active effective niche filter (quick pill OR dropdown selection)
   const effectiveNiches = useMemo(() => {
@@ -305,7 +292,9 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
     effectiveNiches.length > 0 ||
     selectedTypes.length > 0;
 
-  const displayedResults = isSearchActive ? searchResults : recommendedCreators;
+  const displayedResults = isSearchActive
+    ? searchResults
+    : (allCreators || []);
   const visibleResults = displayedResults.slice(0, visibleCount);
   const hasMore = visibleCount < displayedResults.length;
 
@@ -509,30 +498,13 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-5 w-5 text-primary" />
+                  <Users className="h-5 w-5 text-primary" />
                   <span className="text-base font-medium">
-                    Recommended for{' '}
-                    <span className="text-primary">{brandName || 'Your Brand'}</span>
-                    {industryType && (
-                      <span className="text-muted-foreground font-normal">
-                        {' '}· {industryType}
-                      </span>
-                    )}
+                    All Creators {allCreators && `(${allCreators.length})`}
                   </span>
                 </>
               )}
             </div>
-            {!isSearchActive && allCreators && allCreators.length > 0 && (
-              <button
-                onClick={() => {
-                  setSearchQuery(' ');
-                  setTimeout(() => setSearchQuery(''), 10);
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                View All ({allCreators.length})
-              </button>
-            )}
           </div>
 
           {/* Creator Grid */}
@@ -570,7 +542,7 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
                 <p className="text-sm text-muted-foreground mt-1">
                   {isSearchActive
                     ? 'Try adjusting your search or filters'
-                    : 'No creators have joined Advize yet matching your industry'}
+                    : 'No creators have joined Advize yet'}
                 </p>
               </div>
               {isSearchActive && (

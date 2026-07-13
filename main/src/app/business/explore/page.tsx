@@ -165,7 +165,7 @@ export default function BusinessExplorePage() {
     [user?.uid, firestore]
   );
   const { data: businessProfile } = useDoc<any>(businessProfileRef);
-  
+
   const userRef = useMemoFirebase(
     () => (user?.uid ? doc(firestore, 'users', user.uid) : null),
     [user?.uid, firestore]
@@ -192,90 +192,92 @@ export default function BusinessExplorePage() {
   });
 
   return (
-    <div className="flex-1 space-y-6">      <Tabs defaultValue="library" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="library">
-            <Library className="mr-2 h-4 w-4" />
-            Library
-          </TabsTrigger>
-          <TabsTrigger value="people">
-            <Users className="mr-2 h-4 w-4" />
-            People
-          </TabsTrigger>
-          <TabsTrigger value="clubs">
-            <Club className="mr-2 h-4 w-4" />
-            Clubs
-          </TabsTrigger>
-        </TabsList>
+    <div className="flex-1 space-y-6">      <Tabs defaultValue="people" className="w-full">
+      <TabsList className="grid w-full grid-cols-3">
 
-        <TabsContent value="library" className="mt-6">
-          <div className="flex flex-wrap gap-2 mb-6">
+        <TabsTrigger value="people">
+          <Users className="mr-2 h-4 w-4" />
+          People
+        </TabsTrigger>
+        <TabsTrigger value="clubs">
+          <Club className="mr-2 h-4 w-4" />
+          Clubs
+        </TabsTrigger>
+        <TabsTrigger value="library">
+          <Library className="mr-2 h-4 w-4" />
+          Library
+        </TabsTrigger>
+
+      </TabsList>
+
+      <TabsContent value="library" className="mt-6">
+        <div className="flex flex-wrap gap-2 mb-6">
+          <Button
+            variant={aspectFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setAspectFilter('all')}
+          >
+            All
+          </Button>
+          {aspectRatios.map(ratio => (
             <Button
-              variant={aspectFilter === 'all' ? 'default' : 'outline'}
+              key={ratio}
+              variant={aspectFilter === ratio ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setAspectFilter('all')}
+              onClick={() => setAspectFilter(ratio)}
             >
-              All
+              {ratio}
             </Button>
-            {aspectRatios.map(ratio => (
-              <Button
-                key={ratio}
-                variant={aspectFilter === ratio ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setAspectFilter(ratio)}
-              >
-                {ratio}
-              </Button>
-            ))}
+          ))}
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader size="lg" variant="muted" />
           </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader size="lg" variant="muted" />
-            </div>
-          ) : filteredVideos && filteredVideos.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">
-              {filteredVideos.map((video, index) => {
-                const layout = postLayouts[index % postLayouts.length];
-                return (
-                  <VideoCard
-                    key={video.id}
-                    video={video}
-                    layout={layout}
-                    aspectFilter={aspectFilter}
-                    onSelect={setSelectedVideo}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <div className="col-span-full text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
-              <Video className="mx-auto h-12 w-12 mb-4" />
-              <h3 className="mt-2 text-lg font-medium">No Content Yet</h3>
-              <p className="mt-2 text-sm max-w-xs mx-auto">
-                {aspectFilter !== 'all'
-                  ? 'No videos found for the selected aspect ratio.'
-                  : 'Videos can be added from the admin panel.'}
-              </p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="people" className="mt-6">
-          <CreatorSearch industryType={businessProfile?.industryType} brandName={userData?.name} />
-        </TabsContent>
-
-
-        <TabsContent value="clubs" className="mt-6">
-          <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
-            <Club className="mx-auto h-12 w-12 mb-4" />
-            <h3 className="mt-2 text-lg font-medium">Clubs Feature Coming Soon</h3>
+        ) : filteredVideos && filteredVideos.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">
+            {filteredVideos.map((video, index) => {
+              const layout = postLayouts[index % postLayouts.length];
+              return (
+                <VideoCard
+                  key={video.id}
+                  video={video}
+                  layout={layout}
+                  aspectFilter={aspectFilter}
+                  onSelect={setSelectedVideo}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div className="col-span-full text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
+            <Video className="mx-auto h-12 w-12 mb-4" />
+            <h3 className="mt-2 text-lg font-medium">No Content Yet</h3>
             <p className="mt-2 text-sm max-w-xs mx-auto">
-              You'll soon be able to discover and create curated groups of creators.
+              {aspectFilter !== 'all'
+                ? 'No videos found for the selected aspect ratio.'
+                : 'Videos can be added from the admin panel.'}
             </p>
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </TabsContent>
+
+      <TabsContent value="people" className="mt-6">
+        <CreatorSearch industryType={businessProfile?.industryType} brandName={userData?.name} />
+      </TabsContent>
+
+
+      <TabsContent value="clubs" className="mt-6">
+        <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
+          <Club className="mx-auto h-12 w-12 mb-4" />
+          <h3 className="mt-2 text-lg font-medium">Clubs Feature Coming Soon</h3>
+          <p className="mt-2 text-sm max-w-xs mx-auto">
+            You'll soon be able to discover and create curated groups of creators.
+          </p>
+        </div>
+      </TabsContent>
+    </Tabs>
 
       {/* Video Detail Dialog */}
       <Dialog open={!!selectedVideo} onOpenChange={(open) => !open && setSelectedVideo(null)}>
