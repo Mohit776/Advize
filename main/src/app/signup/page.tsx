@@ -17,12 +17,15 @@ import { FormDescription } from '@/components/ui/form';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { useEffect, useRef, useState } from 'react';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { doc, getDoc } from 'firebase/firestore';
+import { GoogleAuthButton } from '@/components/ui/google-auth-button';
+import { signInWithGoogle } from '@/firebase/non-blocking-login';
 
 const passwordSchema = z.string().min(8, 'Password must be at least 8 characters.');
 
@@ -64,6 +67,7 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const initialRole = searchParams.get('role') === 'business' ? 'business' : 'creator';
@@ -204,6 +208,44 @@ function SignupContent() {
     }
   }
 
+  async function handleGoogleSignup() {
+    setIsLoading(true);
+    isSubmitting.current = true;
+    try {
+      const result = await signInWithGoogle(auth);
+      const googleUser = result.user;
+      
+      const userDocRef = doc(firestore, 'users', googleUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        toast({
+          title: "Account already exists",
+          description: "Logging you in...",
+        });
+        router.replace('/feed');
+      } else {
+        sessionStorage.setItem('googleSignupSession', JSON.stringify({
+          uid: googleUser.uid,
+          email: googleUser.email,
+          displayName: googleUser.displayName,
+          photoURL: googleUser.photoURL,
+        }));
+        router.push('/auth/select-role');
+      }
+    } catch (error: any) {
+      console.error("Google signup failed:", error);
+      isSubmitting.current = false;
+      toast({
+        variant: "destructive",
+        title: "Google Signup Failed",
+        description: error.message || 'An unexpected error occurred.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="flex flex-1 items-center justify-center py-12 px-4 md:px-8">
       <Tabs value={role} onValueChange={(value) => setRole(value as Role)} className="w-full max-w-xl">
@@ -218,7 +260,7 @@ function SignupContent() {
               <CardDescription>Join our network of talented creators.</CardDescription>
             </CardHeader>
             <CardContent>
-              <CreatorSignupForm form={creatorForm} onSubmit={onCreatorSubmit} isLoading={isLoading} />
+              <CreatorSignupForm form={creatorForm} onSubmit={onCreatorSubmit} onGoogleSignup={handleGoogleSignup} isLoading={isLoading} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -229,7 +271,7 @@ function SignupContent() {
               <CardDescription>Find the perfect creators for your brand.</CardDescription>
             </CardHeader>
             <CardContent>
-              <BusinessSignupForm form={businessForm} onSubmit={onBusinessSubmit} isLoading={isLoading} />
+              <BusinessSignupForm form={businessForm} onSubmit={onBusinessSubmit} onGoogleSignup={handleGoogleSignup} isLoading={isLoading} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -238,10 +280,22 @@ function SignupContent() {
   );
 }
 
-function CreatorSignupForm({ form, onSubmit, isLoading }: { form: any; onSubmit: any; isLoading: boolean; }) {
+function CreatorSignupForm({ form, onSubmit, onGoogleSignup, isLoading }: { form: any; onSubmit: any; onGoogleSignup: () => void; isLoading: boolean; }) {
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <div className="space-y-6">
+      <GoogleAuthButton onClick={onGoogleSignup} isLoading={isLoading} />
+      
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+        </div>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
           <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Aisha Sharma" {...field} disabled={isLoading} /></FormControl><FormMessage /></FormItem>
         )} />
@@ -309,14 +363,27 @@ function CreatorSignupForm({ form, onSubmit, isLoading }: { form: any; onSubmit:
           Already have an account? <Link href="/login?role=creator" className="underline hover:text-primary">Login</Link>
         </div>
       </form>
-    </Form>
+      </Form>
+    </div>
   );
 }
 
-function BusinessSignupForm({ form, onSubmit, isLoading }: { form: any; onSubmit: any; isLoading: boolean; }) {
+function BusinessSignupForm({ form, onSubmit, onGoogleSignup, isLoading }: { form: any; onSubmit: any; onGoogleSignup: () => void; isLoading: boolean; }) {
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <div className="space-y-6">
+      <GoogleAuthButton onClick={onGoogleSignup} isLoading={isLoading} />
+      
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+        </div>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField control={form.control} name="brandName" render={({ field }) => (
           <FormItem><FormLabel>Brand Name</FormLabel><FormControl><Input placeholder="Your Company Inc." {...field} disabled={isLoading} /></FormControl><FormMessage /></FormItem>
         )} />
@@ -365,7 +432,8 @@ function BusinessSignupForm({ form, onSubmit, isLoading }: { form: any; onSubmit
           Already have an account? <Link href="/login?role=business" className="underline hover:text-primary">Login</Link>
         </div>
       </form>
-    </Form>
+      </Form>
+    </div>
   );
 }
 

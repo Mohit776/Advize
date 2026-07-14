@@ -22,8 +22,6 @@ import { useUser, useFirestore, useDoc, setDocumentNonBlocking, useMemoFirebase 
 import { doc, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect } from 'react';
-import { PublicHeader } from '@/components/layout/public-header';
-import { PublicFooter } from '@/components/layout/public-footer';
 import { generateSlug } from '@/lib/username-utils';
 
 const profileFormSchema = z.object({
@@ -165,24 +163,18 @@ export default function SetupBusinessProfilePage() {
   
   if (isLoading) {
     return (
-        <div className="flex flex-col min-h-dvh">
-            <PublicHeader />
-            <main className="flex-1 flex items-center justify-center">
-                <div className="w-full max-w-4xl mx-auto space-y-6 p-4">
-                    <div className="space-y-2">
-                        <Skeleton className="h-8 w-1/2" />
-                        <Skeleton className="h-4 w-3/4" />
-                    </div>
-                    <Skeleton className="h-96 w-full" />
-                    <Skeleton className="h-96 w-full" />
-                    <div className="flex justify-end">
-                        <Skeleton className="h-10 w-40" />
-                    </div>
-                </div>
-            </main>
-            <PublicFooter />
+      <div className="w-full max-w-4xl mx-auto space-y-6 p-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
         </div>
-    )
+        <Skeleton className="h-96 w-full" />
+        <Skeleton className="h-96 w-full" />
+        <div className="flex justify-end">
+          <Skeleton className="h-10 w-40" />
+        </div>
+      </div>
+    );
   }
   
   if (!isUserLoading && !user) {
@@ -191,15 +183,12 @@ export default function SetupBusinessProfilePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-dvh">
-     <PublicHeader />
-     <main className="flex-1 flex items-center justify-center py-12">
-        <div className="w-full max-w-4xl mx-auto space-y-6 px-4">
-          <div>
-            <h1 className="text-3xl font-bold font-headline">Setup Your Business Profile</h1>
-            <p className="text-muted-foreground">Complete your profile to start connecting with creators.</p>
-          </div>
-          <Form {...form}>
+    <div className="w-full max-w-4xl mx-auto space-y-6 px-4">
+      <div>
+        <h1 className="text-3xl font-bold font-headline">Setup Your Business Profile</h1>
+        <p className="text-muted-foreground">Complete your profile to start connecting with creators.</p>
+      </div>
+      <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <Card>
                 <CardHeader>
@@ -355,9 +344,6 @@ export default function SetupBusinessProfilePage() {
               </div>
             </form>
           </Form>
-        </div>
-      </main>
-      <PublicFooter />
     </div>
   );
 }

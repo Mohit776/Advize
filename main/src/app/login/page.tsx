@@ -22,6 +22,8 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { GoogleAuthButton } from '@/components/ui/google-auth-button';
+import { signInWithGoogle } from '@/firebase/non-blocking-login';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -146,6 +148,46 @@ function LoginContent() {
     }
   }
 
+  async function handleGoogleLogin() {
+    try {
+      const result = await signInWithGoogle(auth);
+      const googleUser = result.user;
+      
+      const userDocRef = doc(firestore, 'users', googleUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        if (!googleUser.emailVerified) {
+          try {
+            const functions = getFunctions(undefined, 'us-central1');
+            const sendOtpFn = httpsCallable(functions, 'sendOtp');
+            await sendOtpFn({ uid: googleUser.uid });
+          } catch (e) {
+            console.warn('Could not send OTP:', e);
+          }
+          router.replace('/auth/verify-email');
+        } else {
+          router.replace('/feed');
+        }
+      } else {
+        sessionStorage.setItem('googleSignupSession', JSON.stringify({
+          uid: googleUser.uid,
+          email: googleUser.email,
+          displayName: googleUser.displayName,
+          photoURL: googleUser.photoURL,
+        }));
+        router.push('/auth/select-role');
+      }
+    } catch (error: any) {
+      console.error("Google login failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Google Login Failed",
+        description: error.message || 'An unexpected error occurred.',
+      });
+    }
+  }
+
   useEffect(() => {
     form.reset();
   }, [role, form]);
@@ -195,7 +237,7 @@ function LoginContent() {
                 <CardDescription>Access your creator dashboard.</CardDescription>
               </CardHeader>
               <CardContent>
-                <AuthForm form={form} onSubmit={onSubmit} />
+                <AuthForm form={form} onSubmit={onSubmit} onGoogleLogin={handleGoogleLogin} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -206,7 +248,7 @@ function LoginContent() {
                 <CardDescription>Access your business dashboard.</CardDescription>
               </CardHeader>
               <CardContent>
-                <AuthForm form={form} onSubmit={onSubmit} />
+                <AuthForm form={form} onSubmit={onSubmit} onGoogleLogin={handleGoogleLogin} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -216,14 +258,16 @@ function LoginContent() {
   );
 }
 
-function AuthForm({ form, onSubmit }: { form: any; onSubmit: (values: any) => void }) {
+function AuthForm({ form, onSubmit, onGoogleLogin }: { form: any; onSubmit: (values: any) => void; onGoogleLogin: () => void }) {
   const searchParams = useSearchParams();
   const roleParam = searchParams.get('role');
   const role = roleParam === 'business' ? 'business' : 'creator';
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <div className="space-y-6">
+     
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="email"
@@ -250,9 +294,24 @@ function AuthForm({ form, onSubmit }: { form: any; onSubmit: (values: any) => vo
             </FormItem>
           )}
         />
+
+       
         <div className="flex items-center justify-between">
           <Button type="submit" className="w-full">Login</Button>
         </div>
+      
+
+            <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+        </div>
+      </div>
+
+      <GoogleAuthButton onClick={onGoogleLogin} />
+
         <div className="text-center text-sm">
           <Link href="/forgot-password" className="underline text-muted-foreground hover:text-primary">
             Forgot password?
@@ -265,7 +324,10 @@ function AuthForm({ form, onSubmit }: { form: any; onSubmit: (values: any) => vo
           </Link>
         </div>
       </form>
-    </Form>
+      </Form>
+   
+
+    </div>
   );
 }
 

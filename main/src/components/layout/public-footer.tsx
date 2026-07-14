@@ -36,8 +36,8 @@ export function PublicFooter() {
               <ul className="space-y-2">
                 <li><a href="mailto:contact@advize.in" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Mail size={16} /> contact@advize.in</a></li>
                 <li><a href="tel:+919140600553" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Phone size={16} /> +91 9140600553</a></li>
-                <li><Link href="https://www.instagram.com/advi.zofficial?igsh=MWNsOGl6NjJzdGMzcw==" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Instagram size={16} /> Instagram</Link></li>
-                <li><Link href="https://www.linkedin.com/in/advize-team-515603398/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Linkedin size={16} /> LinkedIn</Link></li>
+                <li><Link href="https://www.instagram.com/advi.zeofficial/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Instagram size={16} /> Instagram</Link></li>
+                <li><Link href="https://www.linkedin.com/company/advize-technology/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Linkedin size={16} /> LinkedIn</Link></li>
               </ul>
             </div>
           </div>
