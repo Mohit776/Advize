@@ -566,6 +566,22 @@ export function CreatorSearch({ industryType, brandName }: CreatorSearchProps) {
 
       {/* Quick Niche Pills */}
       <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => {
+            setActiveQuickNiche(null);
+            setSelectedNiches([]);
+            setVisibleCount(PAGE_SIZE);
+            if (!hasFetched) fetchCreators();
+          }}
+          className={cn(
+            'text-sm px-3.5 py-1.5 rounded-full border transition-all duration-200',
+            activeQuickNiche === null && selectedNiches.length === 0
+              ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/30'
+              : 'border-white/10 text-muted-foreground hover:border-primary/40 hover:text-foreground bg-muted/40'
+          )}
+        >
+          All
+        </button>
         {QUICK_NICHES.map((niche) => (
           <button
             key={niche}
