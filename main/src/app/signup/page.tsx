@@ -253,19 +253,19 @@ function CreatorSignupForm({ form, onSubmit, isLoading }: { form: any; onSubmit:
             </FormLabel>
             <FormControl>
               <Input
-                placeholder="@yourusername or https://instagram.com/yourusername"
+                placeholder="https://instagram.com/yourusername"
                 {...field}
                 disabled={isLoading}
               />
             </FormControl>
             <FormDescription className="text-xs">
-              Required to apply to campaigns. Enter your username or profile URL.
+              Required to apply to campaigns. Enter profile URL.
             </FormDescription>
             <FormMessage />
           </FormItem>
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="aisha.sharma@example.com" {...field} disabled={isLoading} /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="Enter Your Mail Here" {...field} disabled={isLoading} /></FormControl><FormMessage /></FormItem>
         )} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="password" render={({ field }) => (
