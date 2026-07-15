@@ -1,0 +1,501 @@
+
+'use client';
+
+import {
+  ArrowLeft,
+  Banknote,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Eye,
+  Heart,
+  Link as LinkIcon,
+  MessageCircle,
+  ShieldCheck,
+  TrendingUp,
+  XCircle,
+} from 'lucide-react';
+import Link from 'next/link';
+import { SubmitContentModal } from '@/app/campaigns/[campaignId]/_components/submit-content-modal';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import type { Campaign, Earning, Submission, User } from '@/lib/types';
+import { useParams } from 'next/navigation';
+import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
+import { collection, doc, query, where } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useMemo, useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { Eye as EyeIcon, Play, ImageIcon, Images } from 'lucide-react';
+import { calculatePayoutFromCpm } from '@/lib/utils';
+
+// Inline preview using the real post data from Apify
+function InlinePostPreview({ postUrl, creatorName }: { postUrl: string; creatorName: string }) {
+  const [postData, setPostData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (!postUrl) return;
+    const fetchPost = async () => {
+      try {
+        const res = await fetch('/api/instagram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: postUrl, type: 'post' }),
+        });
+        const result = await res.json();
+        if (result.success && result.data?.recentPosts?.[0]) {
+          setPostData({
+            ...result.data.recentPosts[0],
+            ownerUsername: result.data.profile?.username,
+          });
+        }
+      } catch { }
+      finally { setLoading(false); }
+    };
+    fetchPost();
+  }, [postUrl]);
+
+  const fmt = (n: number) => {
+    if (n < 0) return '0';
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+    return String(n);
+  };
+
+  const typeIcon: Record<string, React.ReactNode> = {
+    Video: <Play className="h-3 w-3" />,
+    Image: <ImageIcon className="h-3 w-3" />,
+    Sidecar: <Images className="h-3 w-3" />,
+  };
+
+  const typeLabel: Record<string, string> = {
+    Video: 'Reel / Video', Image: 'Photo', Sidecar: 'Carousel',
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full aspect-square rounded-lg bg-muted animate-pulse flex items-center justify-center">
+        <Play className="h-8 w-8 text-muted-foreground/30" />
+      </div>
+    );
+  }
+
+  if (!postData || !postData.displayUrl) {
+    return (
+      <div className="w-full aspect-square rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-sm">
+        Preview unavailable
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Type badge */}
+      <div className="flex items-center justify-between">
+        <Badge variant="secondary" className="flex items-center gap-1.5 text-xs">
+          {typeIcon[postData.type]}
+          {typeLabel[postData.type] ?? postData.type}
+        </Badge>
+        {postData.ownerUsername && (
+          <span className="text-xs text-muted-foreground">@{postData.ownerUsername}</span>
+        )}
+      </div>
+
+      {/* Thumbnail */}
+      <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-muted">
+        {!imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={postData.displayUrl}
+            alt={`Post by ${creatorName}`}
+            className="w-full h-full object-cover rounded-lg"
+            referrerPolicy="no-referrer"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <iframe
+            src={`${postData.url}embed/`}
+            className="w-full border-0"
+            style={{ minHeight: '400px' }}
+            allowTransparency
+            scrolling="no"
+            title={`Instagram post by ${creatorName}`}
+          />
+        )}
+        {postData.type === 'Video' && !imgError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+            <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+              <Play className="h-6 w-6 text-black fill-black ml-0.5" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="flex items-center gap-1.5 p-2 rounded-lg bg-pink-500/10 border border-pink-500/20">
+          <Heart className="h-3.5 w-3.5 text-pink-500" />
+          <div>
+            <p className="text-xs font-bold">{fmt(postData.likesCount)}</p>
+            <p className="text-[10px] text-muted-foreground">Likes</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+          <MessageCircle className="h-3.5 w-3.5 text-blue-500" />
+          <div>
+            <p className="text-xs font-bold">{fmt(postData.commentsCount)}</p>
+            <p className="text-[10px] text-muted-foreground">Comments</p>
+          </div>
+        </div>
+        {postData.videoViewsCount > 0 && (
+          <div className="flex items-center gap-1.5 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            <EyeIcon className="h-3.5 w-3.5 text-purple-500" />
+            <div>
+              <p className="text-xs font-bold">{fmt(postData.videoViewsCount)}</p>
+              <p className="text-[10px] text-muted-foreground">Views</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Caption */}
+      {postData.caption && (
+        <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+          {postData.caption}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default function CreatorCampaignDetailPage() {
+  const params = useParams();
+  const campaignId = params.campaignId as string;
+  const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
+
+  const campaignRef = useMemoFirebase(
+    () => (campaignId ? doc(firestore, 'campaigns', campaignId) : null),
+    [campaignId, firestore]
+  );
+  const { data: campaign, isLoading: campaignLoading } = useDoc<Campaign>(campaignRef);
+
+  const businessUserRef = useMemoFirebase(
+    () => (campaign ? doc(firestore, 'users', campaign.businessId) : null),
+    [campaign, firestore]
+  );
+  const { data: businessUser, isLoading: businessUserLoading } = useDoc<User>(businessUserRef);
+
+  const submissionQuery = useMemoFirebase(
+    () => (user && campaignId) ? query(collection(firestore, 'submissions'), where('campaignId', '==', campaignId), where('creatorId', '==', user.uid)) : null,
+    [campaignId, firestore, user]
+  );
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionQuery);
+  const submission = useMemo(() => submissions?.[0], [submissions]);
+
+  const earningsQuery = useMemoFirebase(
+    () => (user && campaignId) ? query(collection(firestore, 'earnings'), where('campaignId', '==', campaignId), where('creatorId', '==', user.uid)) : null,
+    [campaignId, firestore, user]
+  );
+  const { data: earnings, isLoading: earningsLoading } = useCollection<Earning>(earningsQuery);
+  const earning = useMemo(() => earnings?.[0], [earnings]);
+
+  // Fetch real post stats from Apify to populate KPIs
+  const [scrapedPostData, setScrapedPostData] = useState<any>(null);
+  useEffect(() => {
+    const postUrl = submission?.postUrl || submission?.username;
+    if (!postUrl || !postUrl.includes('instagram.com')) return;
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/instagram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: postUrl, type: 'post' }),
+        });
+        const result = await res.json();
+        if (result.success && result.data?.recentPosts?.[0]) {
+          setScrapedPostData(result.data.recentPosts[0]);
+        }
+      } catch { }
+    };
+    fetchStats();
+  }, [submission]);
+
+  const performance = useMemo(() => {
+    // Use scraped views if available and greater than what Firestore has
+    const scrapedViews = scrapedPostData?.videoViewsCount || 0;
+    const earnedViews = earning?.views || 0;
+    const views = Math.max(scrapedViews, earnedViews);
+    const likes = Math.max(0, scrapedPostData?.likesCount || 0);
+    const comments = Math.max(0, scrapedPostData?.commentsCount || 0);
+    const cpm = campaign?.cpmRate || 0;
+    const maxPay = campaign?.maxPayPerCreator || 0;
+
+    let potentialEarning = calculatePayoutFromCpm(views, cpm);
+    if (maxPay > 0 && potentialEarning > maxPay) {
+      potentialEarning = maxPay;
+    }
+
+    return { views, likes, comments, potentialEarning };
+  }, [earning, campaign, scrapedPostData]);
+
+  const isLoading = campaignLoading || businessUserLoading || isUserLoading || submissionsLoading || earningsLoading;
+
+  const getFormattedDate = (date: any) => {
+    if (!date) return '';
+    if (date.seconds) {
+      return format(new Date(date.seconds * 1000), 'PPP');
+    }
+    return format(new Date(date), 'PPP');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-9 w-64" />
+          </div>
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <Skeleton className="h-96 w-full" />
+          </div>
+          <div className="lg:col-span-1 space-y-6">
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!campaign || !user) {
+    return <div className="text-center py-10">Campaign data could not be loaded.</div>
+  }
+
+  return (
+    <div className="flex-1 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link href={`/creator/profile/${user.uid}`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight font-headline">
+              {campaign.name}
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={businessUser?.logoUrl} />
+                <AvatarFallback>{businessUser?.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <span>{businessUser?.name}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Verified Views</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {performance.views.toLocaleString('en-IN')}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {scrapedPostData ? 'Live from Instagram' : 'From Firestore'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Potential Earnings</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ₹{performance.potentialEarning.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Based on ₹{campaign.cpmRate}/1k views
+            </p>
+          </CardContent>
+        </Card>
+        {performance.likes > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Likes</CardTitle>
+              <Heart className="h-4 w-4 text-pink-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {performance.likes.toLocaleString('en-IN')}
+              </div>
+              <p className="text-xs text-muted-foreground">On your submission</p>
+            </CardContent>
+          </Card>
+        )}
+        {performance.comments > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Comments</CardTitle>
+              <MessageCircle className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {performance.comments.toLocaleString('en-IN')}
+              </div>
+              <p className="text-xs text-muted-foreground">On your submission</p>
+            </CardContent>
+          </Card>
+        )}
+        {campaign.maxPayPerCreator && campaign.maxPayPerCreator > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Max Payout</CardTitle>
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ₹{campaign.maxPayPerCreator.toLocaleString('en-IN')}
+              </div>
+              <p className="text-xs text-muted-foreground">Maximum possible earning</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Submission</CardTitle>
+              <CardDescription>
+                Details about the content you submitted for this campaign.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!submission ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  You have not made a submission for this campaign yet.
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-5 gap-6 items-start">
+                  <div className="md:col-span-2">
+                    <InlinePostPreview
+                      postUrl={submission.postUrl || submission.username}
+                      creatorName={submission.creatorName}
+                    />
+                  </div>
+                  <div className="md:col-span-3 space-y-4">
+                    <div className="space-y-1">
+                      <h4 className="font-semibold">Post Status</h4>
+                      <Badge variant={submission.status === 'pending' ? 'secondary' : submission.status === 'approved' ? 'default' : 'destructive'} className='capitalize'>
+                        {submission.status === 'pending' && <Clock className="mr-2 h-4 w-4" />}
+                        {submission.status === 'approved' && <CheckCircle2 className="mr-2 h-4 w-4" />}
+                        {submission.status === 'rejected' && <XCircle className="mr-2 h-4 w-4" />}
+                        {submission.status}
+                      </Badge>
+                    </div>
+                    {submission.status === 'rejected' && submission.rejectionReason && (
+                      <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive-foreground">
+                        <h5 className="font-semibold text-sm">Rejection Feedback</h5>
+                        <p className="text-xs mt-1">{submission.rejectionReason}</p>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">Post Link</h4>
+                        {submission.status === 'approved' ? (
+                          <SubmitContentModal submissionId={submission.id}>
+                            <Button variant={submission.postUrl ? "secondary" : "outline"} size="sm" className="h-8">
+                               {submission.postUrl ? 'Submitted' : 'Submit / Update Link'}
+                            </Button>
+                          </SubmitContentModal>
+                        ) : null}
+                      </div>
+                      <a href={submission.postUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all flex items-center gap-2">
+                        <LinkIcon className="h-4 w-4 flex-shrink-0" /> {submission.postUrl}
+                      </a>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold">Submitted On</h4>
+                      <p className="text-sm text-muted-foreground">{format(new Date(submission.submittedAt.seconds * 1000), 'PPP')}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column */}
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign Info</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Banknote className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Total Budget</p>
+                  <p className="font-semibold">₹{(campaign.budget ?? 0).toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+              {campaign.endDate && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">End Date</p>
+                    <p className="font-semibold">{getFormattedDate(campaign.endDate)}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign Brief</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{campaign.description}</p>
+              <Button variant="link" asChild className="p-0 h-auto mt-2">
+                <Link href={`/campaigns/${campaignId}`}>View Full Campaign Details</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
