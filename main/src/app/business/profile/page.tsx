@@ -47,6 +47,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import dynamic from 'next/dynamic';
+
+const AutoDMCard = dynamic(
+  () => import('@/app/creator/profile/_components/auto-dm-card').then((m) => ({ default: m.AutoDMCard })),
+  { loading: () => <Skeleton className="h-64 w-full rounded-xl" />, ssr: false }
+);
+
 
 function BusinessProfileContent() {
   const { toast } = useToast();
@@ -54,10 +61,35 @@ function BusinessProfileContent() {
   const firestore = useFirestore();
   const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
+  const [igAuthTrigger, setIgAuthTrigger] = useState(0);
 
   const userIdFromQuery = searchParams.get('userId');
   const profileUserId = userIdFromQuery || currentUser?.uid;
   const isOwnProfile = !userIdFromQuery || userIdFromQuery === currentUser?.uid;
+
+  // ── Instagram OAuth callback handler ─────────────────────────────────────
+  useEffect(() => {
+    const authResult = searchParams.get('instagram_auth');
+    if (!authResult) return;
+
+    if (authResult === 'success') {
+      toast({ title: 'Instagram Connected! 🎉', description: 'Your account has been authenticated.' });
+      setIgAuthTrigger(n => n + 1);
+    } else if (authResult === 'error') {
+      const reason = searchParams.get('reason') ?? 'Unknown error';
+      toast({
+        variant: 'destructive',
+        title: 'Instagram Connection Failed',
+        description: `Reason: ${reason}. Please try again.`,
+      });
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('instagram_auth');
+    url.searchParams.delete('reason');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, [searchParams, toast]);
+
 
   const handleShareProfile = async (profileId: string, name: string) => {
     const url = `${window.location.origin}/profile/${profileId}`;
@@ -346,7 +378,16 @@ function BusinessProfileContent() {
                 {businessProfile.about}
               </p>
             </CardContent>
+
+    
           </Card>
+
+                    {/* Auto DM — only visible to the account owner */}
+      {isOwnProfile && profileUserId && (
+        <div className="pt-2">
+          <AutoDMCard creatorId={profileUserId} triggerReload={igAuthTrigger} />
+        </div>
+      )}
         </div>
 
         {/* Right Column */}
@@ -430,6 +471,7 @@ function BusinessProfileContent() {
           </Card>
         </div>
       </div>
+    
     </div>
   );
 }

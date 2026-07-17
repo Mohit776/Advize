@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { createPost } from '@/lib/feed';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -235,6 +236,27 @@ export default function NewCampaignPage() {
       createdAt: serverTimestamp(),
     };
     await setDocumentNonBlocking(groupRef, groupData, {});
+
+    // 3. Create a feed post for the new campaign
+    try {
+      if (storage && data.visibility === 'public') {
+        const platformTags = data.platforms.map((p) => p.toLowerCase());
+        const tags = Array.from(new Set(['campaign', 'collaboration', ...platformTags]));
+
+        await createPost(firestore, storage, {
+          authorId: user.uid,
+          authorRole: 'business',
+          authorName: userData.name || 'A Brand',
+          authorAvatar: userData.logoUrl || undefined,
+          authorUsername: userData.username || undefined,
+          title: `New Campaign: ${data.name}`,
+          tags,
+          content: `We just launched a new campaign: **${data.name}**!\n\n${data.description}\n\nCheck out the campaign here: ${window.location.origin}/campaigns/${campaignId}`,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to create feed post for campaign:', e);
+    }
 
 
     toast({

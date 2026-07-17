@@ -24,6 +24,8 @@ import {
   RefreshCw,
   MessageSquare,
   Image as ImageIcon,
+  ChevronLeft,
+  MessageSquareDot,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,6 +71,8 @@ import { useToast } from '@/hooks/use-toast';
 
 type MatchType = 'exact' | 'contains' | 'starts_with';
 export type TriggerType = 'dm' | 'comment_specific';
+
+type AutomationMode = 'inbox_dm' | 'comment_reply';
 
 type AutoDMRule = {
   id: string;
@@ -152,8 +156,90 @@ const REDIRECT_URI = `${APP_URL}/api/instagram-auth/callback`;
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
+const AUTOMATION_MODE_CONFIG: Record<
+  AutomationMode,
+  { label: string; short: string; icon: React.ElementType; description: string; gradient: string; accent: string }
+> = {
+  inbox_dm: {
+    label: 'Inbox DM Reply',
+    short: 'DM Automation',
+    icon: MessageCircle,
+    description: 'Auto-reply when someone sends you a direct message containing a keyword.',
+    gradient: 'from-sky-500 via-blue-600 to-indigo-600',
+    accent: 'sky',
+  },
+  comment_reply: {
+    label: 'Comment Reply',
+    short: 'Comment Automation',
+    icon: MessageSquareDot,
+    description: 'Auto-DM users who comment a keyword on your selected posts or reels.',
+    gradient: 'from-fuchsia-500 via-purple-600 to-pink-600',
+    accent: 'fuchsia',
+  },
+};
+
+// ── Mode Selector ─────────────────────────────────────────────────────────────
+
+function AutomationModeSelector({ onSelect }: { onSelect: (mode: AutomationMode) => void }) {
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="text-center space-y-2 pb-2">
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+          Choose the type of automation you want to set up for your Instagram account.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {(Object.entries(AUTOMATION_MODE_CONFIG) as [AutomationMode, typeof AUTOMATION_MODE_CONFIG[AutomationMode]][]).map(
+          ([mode, cfg]) => (
+            <button
+              key={mode}
+              onClick={() => onSelect(mode)}
+              className={`group relative flex flex-col items-start gap-5 rounded-2xl border border-white/10 bg-card/40 backdrop-blur-xl p-6 text-left hover:border-white/20 hover:bg-card/60 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] overflow-hidden`}
+            >
+              {/* Animated gradient blob */}
+              <div className={`absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-bl ${cfg.gradient} opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-500 pointer-events-none`} />
+
+              <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${cfg.gradient} flex items-center justify-center shadow-xl ring-1 ring-white/10 group-hover:scale-110 transition-transform duration-300`}>
+                <cfg.icon className="h-7 w-7 text-white" />
+              </div>
+
+              <div className="space-y-1.5 flex-1">
+                <p className="text-base font-bold tracking-tight text-foreground">{cfg.label}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{cfg.description}</p>
+              </div>
+
+              <div className={`flex items-center gap-1.5 text-xs font-semibold bg-gradient-to-r ${cfg.gradient} bg-clip-text text-transparent group-hover:gap-2.5 transition-all duration-200`}>
+                Get started
+                <ArrowRight className="h-3.5 w-3.5 text-purple-400 group-hover:translate-x-0.5 transition-transform duration-200" />
+              </div>
+            </button>
+          )
+        )}
+      </div>
+
+      <div className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
+        <Sparkles className="h-3.5 w-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          You can set up both DM and comment automations independently. Connect your Instagram once and create rules for either.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** Gradient hero banner – reused in both states */
-function HeroBanner({ connectedAccount }: { connectedAccount?: InstagramAccount | null }) {
+function HeroBanner({
+  connectedAccount,
+  mode,
+  onBack,
+}: {
+  connectedAccount?: InstagramAccount | null;
+  mode: AutomationMode | null;
+  onBack?: () => void;
+}) {
+  const modeConfig = mode ? AUTOMATION_MODE_CONFIG[mode] : null;
+
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-card/40 backdrop-blur-xl p-8 mb-8 shadow-2xl">
       {/* Gradient background */}
@@ -162,28 +248,39 @@ function HeroBanner({ connectedAccount }: { connectedAccount?: InstagramAccount 
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-gradient-to-tr from-purple-600/20 to-transparent rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
+        {/* Back button when a mode is selected */}
+        {mode && onBack && (
+          <button
+            onClick={onBack}
+            className="absolute top-0 right-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-base font-semibold text-foreground bg-white/10 border border-white/20 hover:bg-white/20 hover:border-white/30 hover:scale-[1.02] active:scale-[0.98] shadow-lg transition-all duration-200 group z-10"
+            aria-label="Back to mode selection"
+          >
+            <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform duration-150" />
+            Change mode
+          </button>
+        )}
+
         <div className="relative flex-shrink-0">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-fuchsia-500 via-purple-600 to-orange-500 flex items-center justify-center shadow-xl shadow-purple-500/20 ring-1 ring-white/20">
-            <Bot className="h-8 w-8 text-white" />
+          <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shadow-xl ring-1 ring-white/20 ${modeConfig ? `bg-gradient-to-br ${modeConfig.gradient}` : 'bg-gradient-to-br from-fuchsia-500 via-purple-600 to-orange-500'}`}>
+            {modeConfig ? <modeConfig.icon className="h-8 w-8 text-white" /> : <Bot className="h-8 w-8 text-white" />}
           </div>
           <div className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center shadow-lg border-2 border-background">
             <Instagram className="h-3.5 w-3.5 text-white" />
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">Instagram Auto DM</h2>
+          <h2 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+            {modeConfig ? modeConfig.label + ' Automation' : 'Instagram Auto DM'}
+          </h2>
           <p className="text-sm text-muted-foreground mt-1.5 max-w-md leading-relaxed">
             {connectedAccount
               ? `Connected as @${connectedAccount.username}. Your auto-replies are active.`
+              : modeConfig
+              ? modeConfig.description
               : 'Engage your audience 24/7. Connect your Instagram to set up intelligent auto-replies for DMs and comments.'}
           </p>
         </div>
-        {connectedAccount && (
-          <Badge className="flex-shrink-0 bg-emerald-500/15 text-emerald-400 border-emerald-500/30 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm hidden sm:flex">
-            <ShieldCheck className="h-4 w-4 mr-1.5" />
-            Authenticated
-          </Badge>
-        )}
+   
       </div>
     </div>
   );
@@ -422,10 +519,12 @@ function RulesManager({
   creatorId,
   account,
   onDisconnect,
+  mode,
 }: {
   creatorId: string;
   account: InstagramAccount;
   onDisconnect: () => void;
+  mode: AutomationMode;
 }) {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -434,7 +533,7 @@ function RulesManager({
   const [editingRule, setEditingRule] = useState<AutoDMRule | null>(null);
   const [keyword, setKeyword] = useState('');
   const [matchType, setMatchType] = useState<MatchType>('contains');
-  const [triggerType, setTriggerType] = useState<TriggerType>('dm');
+  const [triggerType, setTriggerType] = useState<TriggerType>(mode === 'comment_reply' ? 'comment_specific' : 'dm');
   const [mediaId, setMediaId] = useState<string>('');
   const [mediaUrl, setMediaUrl] = useState<string>('');
   const [reply, setReply] = useState('');
@@ -443,16 +542,17 @@ function RulesManager({
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
-  // Firestore query — keyed by creator_id (= Firebase UID)
+  // Firestore query — filtered by creator_id AND trigger_type matching current mode
   const rulesQuery = useMemoFirebase(
     () =>
       firestore
         ? query(
           collection(firestore, 'instagram_rules'),
           where('creator_id', '==', creatorId),
+          where('trigger_type', '==', mode === 'comment_reply' ? 'comment_specific' : 'dm'),
         )
         : null,
-    [firestore, creatorId]
+    [firestore, creatorId, mode]
   );
   const { data: rules, isLoading } = useCollection<AutoDMRule>(rulesQuery);
 
@@ -466,14 +566,14 @@ function RulesManager({
   const resetForm = useCallback(() => {
     setKeyword('');
     setMatchType('contains');
-    setTriggerType('dm');
+    setTriggerType(mode === 'comment_reply' ? 'comment_specific' : 'dm');
     setMediaId('');
     setMediaUrl('');
     setReply('');
     setEnabled(true);
     setEditingRule(null);
     setShowForm(false);
-  }, []);
+  }, [mode]);
 
   const openEdit = useCallback((rule: AutoDMRule) => {
     setKeyword(rule.keyword);
@@ -577,64 +677,7 @@ function RulesManager({
 
   return (
     <div className="space-y-5">
-      {/* Connected Account Card */}
-      <Card className="border-emerald-500/20 bg-emerald-500/5">
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-pink-500 via-purple-600 to-orange-500 flex items-center justify-center flex-shrink-0">
-            <Instagram className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold text-sm">@{account.username}</p>
-              <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
-                <ShieldCheck className="h-2.5 w-2.5 mr-1" />
-                Connected
-              </Badge>
-              {isTokenExpired && (
-                <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-400 border-amber-500/30">
-                  Token Expired
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {account.account_type} · Connected{' '}
-              {new Date(account.connected_at).toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </p>
-          </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex-shrink-0 text-muted-foreground hover:text-destructive">
-                <LogOut className="h-4 w-4 mr-1.5" />
-                Disconnect
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Disconnect Instagram?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will remove your Instagram connection. Your existing rules will be preserved but no longer
-                  active until you reconnect.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDisconnect}
-                  disabled={isDisconnecting}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {isDisconnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Disconnect
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
+    
 
       {/* Stats row */}
       {totalCount > 0 && (
@@ -713,26 +756,22 @@ function RulesManager({
               </div>
             </div>
 
+            {/* Trigger source is locked to the selected mode — show a read-only pill instead of a dropdown */}
             <div className="space-y-2 pt-2">
-              <Label htmlFor="auto-dm-trigger-type" className="text-sm font-medium">
-                Trigger Source
-              </Label>
-              <Select value={triggerType} onValueChange={v => setTriggerType(v as TriggerType)}>
-                <SelectTrigger id="auto-dm-trigger-type" className="bg-background/60">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TRIGGER_TYPE_CONFIG).map(([key, cfg]) => (
-                    <SelectItem key={key} value={key}>
-                      <div className="flex items-center gap-2">
-                        <cfg.icon className="h-4 w-4 text-purple-400" />
-                        <span>{cfg.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">{(TRIGGER_TYPE_CONFIG[triggerType] || TRIGGER_TYPE_CONFIG.dm).description}</p>
+              <Label className="text-sm font-medium">Trigger Source</Label>
+              <div className="flex items-center gap-2 rounded-lg border border-white/5 bg-background/40 px-3 py-2.5">
+                {React.createElement(
+                  TRIGGER_TYPE_CONFIG[mode === 'comment_reply' ? 'comment_specific' : 'dm'].icon,
+                  { className: 'h-4 w-4 text-purple-400 flex-shrink-0' }
+                )}
+                <span className="text-sm font-medium">
+                  {TRIGGER_TYPE_CONFIG[mode === 'comment_reply' ? 'comment_specific' : 'dm'].label}
+                </span>
+                <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 border-purple-500/30 text-purple-400">
+                  Locked to mode
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">{TRIGGER_TYPE_CONFIG[mode === 'comment_reply' ? 'comment_specific' : 'dm'].description}</p>
             </div>
 
             {triggerType === 'comment_specific' && (
@@ -988,7 +1027,9 @@ function RulesManager({
             </span>
             <div className="flex items-center gap-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[11px] text-muted-foreground">Monitoring DMs</span>
+              <span className="text-[11px] text-muted-foreground">
+                {mode === 'comment_reply' ? 'Monitoring Comments' : 'Monitoring DMs'}
+              </span>
             </div>
           </div>
         </div>
@@ -1021,6 +1062,65 @@ function RulesManager({
         )
       )}
 
+        {/* Connected Account Card */}
+      <Card className="border-emerald-500/20 bg-emerald-500/5">
+        <CardContent className="p-4 flex items-center gap-4">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-pink-500 via-purple-600 to-orange-500 flex items-center justify-center flex-shrink-0">
+            <Instagram className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-sm">@{account.username}</p>
+              <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                <ShieldCheck className="h-2.5 w-2.5 mr-1" />
+                Connected
+              </Badge>
+              {isTokenExpired && (
+                <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-400 border-amber-500/30">
+                  Token Expired
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {account.account_type} · Connected{' '}
+              {new Date(account.connected_at).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </p>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="flex-shrink-0 text-muted-foreground hover:text-destructive">
+                <LogOut className="h-4 w-4 mr-1.5" />
+                Disconnect
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Disconnect Instagram?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove your Instagram connection. Your existing rules will be preserved but no longer
+                  active until you reconnect.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDisconnect}
+                  disabled={isDisconnecting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDisconnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Disconnect
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
+
       {/* Info tip */}
       {totalCount > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3">
@@ -1047,6 +1147,7 @@ export function AutoDMCard({ creatorId, triggerReload }: AutoDMCardProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
 
+  const [selectedMode, setSelectedMode] = useState<AutomationMode | null>(null);
   const [account, setAccount] = useState<InstagramAccount | null | undefined>(undefined); // undefined = loading
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -1067,48 +1168,66 @@ export function AutoDMCard({ creatorId, triggerReload }: AutoDMCardProps) {
     loadAccount();
   }, [loadAccount, triggerReload]);
 
+  const handleBack = useCallback(() => setSelectedMode(null), []);
+
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-0">
       {/* Shared hero banner */}
-      <HeroBanner connectedAccount={account ?? null} />
+      <HeroBanner
+        connectedAccount={account ?? null}
+        mode={selectedMode}
+        onBack={selectedMode ? handleBack : undefined}
+      />
 
-      {/* Loading */}
-      {account === undefined && (
-        <Card className="border-white/5">
-          <CardContent className="p-8 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </CardContent>
-        </Card>
+      {/* ── Step 0: Mode selection ── */}
+      {!selectedMode && (
+        <AutomationModeSelector onSelect={setSelectedMode} />
       )}
 
-      {/* Error */}
-      {fetchError && (
-        <Card className="border-destructive/20 bg-destructive/5">
-          <CardContent className="p-4 flex items-center gap-3">
-            <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
-            <p className="text-sm text-destructive">{fetchError}</p>
-            <Button size="sm" variant="outline" onClick={loadAccount} className="ml-auto">
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {/* ── Step 1+: Mode selected ── */}
+      {selectedMode && (
+        <>
+          {/* Loading */}
+          {account === undefined && (
+            <Card className="border-white/5">
+              <CardContent className="p-8 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Not connected → show connect panel */}
-      {account === null && !fetchError && (
-        <ConnectInstagramPanel creatorId={creatorId} />
-      )}
+          {/* Error */}
+          {fetchError && (
+            <Card className="border-destructive/20 bg-destructive/5">
+              <CardContent className="p-4 flex items-center gap-3">
+                <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                <p className="text-sm text-destructive">{fetchError}</p>
+                <Button size="sm" variant="outline" onClick={loadAccount} className="ml-auto">
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Connected → show rules manager */}
-      {account && !fetchError && (
-        <RulesManager
-          creatorId={creatorId}
-          account={account}
-          onDisconnect={() => setAccount(null)}
-        />
+          {/* Not connected → show connect panel */}
+          {account === null && !fetchError && (
+            <ConnectInstagramPanel creatorId={creatorId} />
+          )}
+
+          {/* Connected → show rules manager */}
+          {account && !fetchError && (
+            <RulesManager
+              key={selectedMode}
+              creatorId={creatorId}
+              account={account}
+              mode={selectedMode}
+              onDisconnect={() => setAccount(null)}
+            />
+          )}
+        </>
       )}
     </div>
   );
