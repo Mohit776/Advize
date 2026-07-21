@@ -145,29 +145,6 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
         </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="px-4 pb-3">
-        <p className="text-base text-foreground/90 leading-[1.7] whitespace-pre-wrap break-words">
-          {renderInlineText(
-            isLong && !expanded
-              ? safeContent.slice(0, CONTENT_CLAMP_LENGTH) + '…'
-              : safeContent
-          )}
-        </p>
-        {isLong && (
-          <button
-            onClick={() => setExpanded((p) => !p)}
-            className="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-0.5 font-medium transition-colors"
-          >
-            {expanded ? (
-              <><ChevronUp className="h-3 w-3" /> Show less</>
-            ) : (
-              <><ChevronDown className="h-3 w-3" /> Read more</>
-            )}
-          </button>
-        )}
-      </div>
-
       {/* ── Image ── */}
       {post.imageUrl && (
         <Dialog>
@@ -200,6 +177,29 @@ function PostCardInner({ post, isLiked, onDelete }: PostCardProps) {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* ── Content ── */}
+      <div className="px-4 pb-3 pt-1">
+        <p className="text-base text-foreground/90 leading-[1.7] whitespace-pre-wrap break-words">
+          {renderInlineText(
+            isLong && !expanded
+              ? safeContent.slice(0, CONTENT_CLAMP_LENGTH) + '…'
+              : safeContent
+          )}
+        </p>
+        {isLong && (
+          <button
+            onClick={() => setExpanded((p) => !p)}
+            className="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-0.5 font-medium transition-colors"
+          >
+            {expanded ? (
+              <><ChevronUp className="h-3 w-3" /> Show less</>
+            ) : (
+              <><ChevronDown className="h-3 w-3" /> Read more</>
+            )}
+          </button>
+        )}
+      </div>
 
       {/* ── Actions bar ── */}
       <div className="flex items-center justify-between px-3 py-2.5 border-t border-white/[0.05]">
