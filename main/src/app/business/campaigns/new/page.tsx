@@ -47,6 +47,7 @@ const campaignFormSchema = z.object({
   maxFollowers: z.coerce.number().optional(),
   startDate: z.date({ required_error: "A start date is required." }),
   endDate: z.date({ required_error: "An end date is required." }),
+  fundRaisePercentage: z.coerce.number().min(0, "Must be positive").max(100, "Max 100%").optional(),
   platforms: z.array(z.string()).min(1, "You must select at least one platform."),
   requirements: z.string().min(20, 'Requirements must be at least 20 characters.'),
   dos: z.string().optional(),
@@ -75,21 +76,29 @@ const campaignFormSchema = z.object({
   message: "End date must be after start date.",
   path: ["endDate"],
 }).refine((data) => {
+  if (['Crowd Funding', 'NGO Support'].includes(data.type)) return true;
   if (data.visibility === 'public') {
     return data.budget && data.budget > 0 && data.cpmRate && data.cpmRate > 0;
   }
   return true;
 }, { message: "Budget and CPM Rate are required for public campaigns.", path: ["budget"] })
   .refine((data) => {
+    if (['Crowd Funding', 'NGO Support'].includes(data.type)) return true;
     if (data.visibility === 'private') {
       return data.fixedPayPerCreator && data.fixedPayPerCreator > 0 && data.numberOfCreators && data.numberOfCreators > 0;
     }
     return true;
-  }, { message: "Fixed Pay and Number of Creators are required for private campaigns.", path: ["fixedPayPerCreator"] });
+  }, { message: "Fixed Pay and Number of Creators are required for private campaigns.", path: ["fixedPayPerCreator"] })
+  .refine((data) => {
+    if (['Crowd Funding', 'NGO Support'].includes(data.type)) {
+      return data.fundRaisePercentage !== undefined && data.fundRaisePercentage > 0;
+    }
+    return true;
+  }, { message: "Percentage of funds raise is required for this campaign type.", path: ["fundRaisePercentage"] });
 
 type CampaignFormValues = z.infer<typeof campaignFormSchema>;
 
-const campaignTypes = ["UGC", "Short Video", "Reaction Video", "Review", "Unboxing Video", "Demo Video", "Tutorial", "Haul Video", "Banner/Image Post", "Clipping", "Giveaway", "Barter Collab"];
+const campaignTypes = ["UGC", "Short Video", "Reaction Video", "Review", "Unboxing Video", "Demo Video", "Tutorial", "Haul Video", "Banner/Image Post", "Clipping", "Giveaway", "Barter Collab", "Crowd Funding", "NGO Support"];
 const availablePlatforms = ["Instagram", "YouTube", "LinkedIn", "Facebook", "Snapchat", "ShareChat"];
 
 
@@ -199,6 +208,7 @@ export default function NewCampaignPage() {
       budget: data.budget ?? null,
       cpmRate: data.cpmRate ?? null,
       maxPayPerCreator: data.maxPayPerCreator ?? null,
+      fundRaisePercentage: data.fundRaisePercentage ?? null,
       fixedPayPerCreator: data.fixedPayPerCreator ?? null,
       numberOfCreators: data.numberOfCreators ?? null,
       minFollowers: data.minFollowers ?? null,
@@ -295,7 +305,13 @@ export default function NewCampaignPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Campaign Visibility</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={(val) => {
+                      field.onChange(val);
+                      const currentType = form.getValues('type');
+                      if (val === 'public' && ['Crowd Funding', 'NGO Support'].includes(currentType)) {
+                        form.setValue('type', '');
+                      }
+                    }} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select campaign visibility" />
@@ -335,14 +351,16 @@ export default function NewCampaignPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Campaign Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a campaign type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="max-h-60">
-                          {campaignTypes.map(type => (
+                          {campaignTypes
+                            .filter(type => campaignVisibility === 'private' || !['Crowd Funding', 'NGO Support'].includes(type))
+                            .map(type => (
                             <SelectItem key={type} value={type}>{type}</SelectItem>
                           ))}
                         </SelectContent>
@@ -534,11 +552,12 @@ export default function NewCampaignPage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline & Budget</CardTitle>
-              <CardDescription>Define the financial and time constraints of your campaign.</CardDescription>
-            </CardHeader>
+          {!['Crowd Funding', 'NGO Support'].includes(campaignType) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Timeline & Budget</CardTitle>
+                <CardDescription>Define the financial and time constraints of your campaign.</CardDescription>
+              </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <FormField
@@ -737,6 +756,116 @@ export default function NewCampaignPage() {
               )}
             </CardContent>
           </Card>
+          )}
+
+          {['Crowd Funding', 'NGO Support'].includes(campaignType) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Timeline & Fund Raise</CardTitle>
+                <CardDescription>Define the timeline and fund raising percentage.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Start Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date(new Date().setHours(0, 0, 0, 0))
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>End Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < (form.getValues("startDate") || new Date())
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="fundRaisePercentage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>% of Funds Raise</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="10" {...field} />
+                      </FormControl>
+                      <FormDescription>Percentage of the raised funds that will go to creators/platform.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
