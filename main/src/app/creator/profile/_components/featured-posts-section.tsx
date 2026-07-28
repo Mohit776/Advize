@@ -34,13 +34,8 @@ function fmt(n: number | undefined): string {
 
 function getProxiedUrl(url: string): string {
   if (!url) return '';
-  if (
-    url.includes('cdninstagram.com') ||
-    url.includes('fbcdn.net') ||
-    url.includes('instagram.com')
-  ) {
-    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
-  }
+  // Instagram CDN URLs are IP-signed — they must be loaded directly in the browser.
+  // Server-side proxy always gets 403. Return the URL as-is.
   return url;
 }
 
@@ -193,6 +188,8 @@ function FeaturedPostCard({
             src={getProxiedUrl(a.displayUrl)}
             alt="post thumbnail"
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            referrerPolicy="no-referrer-when-downgrade"
+            crossOrigin="anonymous"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}

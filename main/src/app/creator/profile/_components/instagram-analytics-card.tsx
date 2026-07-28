@@ -106,15 +106,11 @@ function StatCard({
 }
 
 /**
- * Routes Instagram CDN URLs through our server-side proxy to bypass
- * hotlink protection and CORS restrictions on Instagram image URLs.
+ * Instagram CDN URLs are IP-signed — they must be loaded directly in the browser.
+ * Server-side proxy always gets 403. Return the URL as-is.
  */
 function getProxiedImageUrl(url: string): string {
     if (!url) return '';
-    // Only proxy Instagram/Facebook CDN URLs
-    if (url.includes('cdninstagram.com') || url.includes('fbcdn.net') || url.includes('instagram.com')) {
-        return `/api/image-proxy?url=${encodeURIComponent(url)}`;
-    }
     return url;
 }
 
@@ -132,8 +128,9 @@ function PostCard({ post }: { post: InstagramPost }) {
                     alt={post.caption?.substring(0, 50) || 'Instagram post'}
                     className="absolute inset-0 w-full h-full object-cover transition-opacity group-hover:opacity-80"
                     loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
                     onError={(e) => {
-                        // If proxy also fails, show gradient fallback
+                        // If image fails to load, show gradient fallback
                         (e.target as HTMLImageElement).style.display = 'none';
                     }}
                 />
@@ -416,6 +413,7 @@ export function InstagramAnalyticsCard({
                                     src={getProxiedImageUrl(profile.profilePicUrl)}
                                     alt={profile.fullName || profile.username}
                                     className="absolute inset-0 w-full h-full object-cover"
+                                    referrerPolicy="no-referrer-when-downgrade"
                                     onError={(e) => {
                                         (e.target as HTMLImageElement).style.display = 'none';
                                     }}
