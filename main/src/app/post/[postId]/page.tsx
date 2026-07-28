@@ -8,7 +8,7 @@ import { PostCard } from '@/components/feed/PostCard';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PostPage() {
@@ -22,15 +22,11 @@ export default function PostPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchPostAndLike() {
+    async function fetchPost() {
       try {
         const fetchedPost = await getPost(firestore, postId);
         if (fetchedPost) {
           setPost(fetchedPost);
-          if (user) {
-             const liked = await hasUserLiked(firestore, postId, user.uid);
-             setIsLiked(liked);
-          }
         } else {
           setError('Post not found');
         }
@@ -42,10 +38,21 @@ export default function PostPage() {
       }
     }
 
-    if (!isUserLoading && firestore) {
-      fetchPostAndLike();
+    if (firestore && !isUserLoading) {
+      fetchPost();
     }
-  }, [firestore, postId, user, isUserLoading]);
+  }, [firestore, postId, isUserLoading]);
+
+  // Check if the logged-in user has liked the post (separate from post loading)
+  useEffect(() => {
+    async function checkLike() {
+      if (user && firestore && post) {
+        const liked = await hasUserLiked(firestore, postId, user.uid);
+        setIsLiked(liked);
+      }
+    }
+    checkLike();
+  }, [firestore, postId, user, post]);
 
   if (isUserLoading || isLoading) {
     return (
@@ -86,13 +93,34 @@ export default function PostPage() {
       */}
       <main className="flex-1 flex justify-center py-8 px-4 relative">
         <div className="w-full max-w-xl">
-          <div className={!user ? "pointer-events-none blur-md opacity-40 transition-all duration-500" : ""}>
+          {user && (
+            <div className="mb-6 flex items-center">
+              <Button asChild variant="ghost" className="-ml-4 text-muted-foreground hover:text-foreground">
+                <Link href="/feed">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Link>
+              </Button>
+            </div>
+          )}
+          
+          <div className={!user ? "pointer-events-none blur-md opacity-40 transition-all duration-500 max-h-[65vh] overflow-hidden" : ""}>
             <PostCard 
               post={post}
               isLiked={isLiked}
               onDelete={() => {}} // Usually a shared post shouldn't be deleted from the single post view by default unless you are the author, but for simplicity we can pass a no-op or handle it properly later.
             />
           </div>
+
+          {user && (
+            <div className="mt-8 flex justify-center">
+              <Button asChild variant="secondary" className="w-full rounded-xl py-6 text-md font-semibold">
+                <Link href="/feed">
+                  More posts
+                </Link>
+              </Button>
+            </div>
+          )}
           
           {!user && (
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-4 mt-12 md:mt-0">
