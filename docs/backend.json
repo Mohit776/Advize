@@ -1,0 +1,865 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Advize platform, either a Creator or a Business.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user (creator or business)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the user or business."
+        },
+        "profileData": {
+          "type": "string",
+          "description": "Reference to Profile data. (Relationship: User 1:1 Profile)"
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL of the user's logo or profile picture.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "name"
+      ]
+    },
+    "CreatorProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CreatorProfile",
+      "type": "object",
+      "description": "Represents the profile information for a creator user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CreatorProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 CreatorProfile)"
+        },
+        "platformLinks": {
+          "type": "array",
+          "description": "Links to the creator's profiles on various platforms.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bio": {
+          "type": "string",
+          "description": "Short biography of the creator."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of the creator (e.g., city, country)."
+        },
+        "categories": {
+          "type": "array",
+          "description": "Content categories the creator specializes in.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bannerUrl": {
+          "type": "string",
+          "description": "URL for the creator's profile banner image.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ]
+    },
+    "BusinessProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BusinessProfile",
+      "type": "object",
+      "description": "Represents the profile information for a business user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the BusinessProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 BusinessProfile)"
+        },
+        "industryType": {
+          "type": "string",
+          "description": "Industry type of the business."
+        },
+        "companyWebsite": {
+          "type": "string",
+          "description": "Company website URL.",
+          "format": "uri"
+        },
+        "tagline": {
+          "type": "string",
+          "description": "A short, catchy phrase for the brand."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of the business (e.g., city, state)."
+        },
+        "about": {
+          "type": "string",
+          "description": "A longer description of the brand."
+        },
+        "twitter": {
+          "type": "string",
+          "description": "The brand's Twitter handle."
+        },
+        "instagram": {
+          "type": "string",
+          "description": "The brand's Instagram handle."
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL of the business's logo.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "industryType"
+      ]
+    },
+    "Campaign": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Campaign",
+      "type": "object",
+      "description": "Represents a campaign created by a business.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Campaign entity."
+        },
+        "businessId": {
+          "type": "string",
+          "description": "Reference to the Business that created the campaign. (Relationship: Business 1:N Campaign)"
+        },
+        "brandName": {
+          "type": "string",
+          "description": "Denormalized name of the business that created the campaign."
+        },
+        "brandLogo": {
+          "type": "string",
+          "description": "Denormalized URL of the business's logo.",
+          "format": "uri"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the campaign."
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Visibility of the campaign.",
+          "enum": ["public", "private"]
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of campaign (e.g., UGC, Review)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the campaign."
+        },
+        "budget": {
+          "type": "number",
+          "description": "Total budget for the campaign (for public campaigns)."
+        },
+        "cpmRate": {
+          "type": "number",
+          "description": "Cost per mille (CPM) rate for the campaign (for public campaigns)."
+        },
+        "maxPayPerCreator": {
+          "type": "number",
+          "description": "Maximum amount a single creator can earn from this campaign."
+        },
+        "fixedPayPerCreator": {
+          "type": "number",
+          "description": "Fixed payment amount per creator (for private campaigns)."
+        },
+        "numberOfCreators": {
+          "type": "number",
+          "description": "The number of creators required for the campaign (for private campaigns)."
+        },
+        "minFollowers": {
+          "type": "number",
+          "description": "The minimum number of followers a creator should have."
+        },
+        "maxFollowers": {
+          "type": "number",
+          "description": "The maximum number of followers a creator should have."
+        },
+        "startDate": {
+          "type": "object",
+          "description": "The start date of the campaign. Stored as a Firestore Timestamp."
+        },
+        "endDate": {
+          "type": "object",
+          "description": "The end date of the campaign. Stored as a Firestore Timestamp."
+        },
+        "requirements": {
+          "type": "string",
+          "description": "Content requirements for the campaign."
+        },
+        "dos": {
+          "type": "string",
+          "description": "A list of things creators should do in their content."
+        },
+        "donts": {
+          "type": "string",
+          "description": "A list of things creators should avoid in their content."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the campaign (e.g., active, completed)."
+        },
+        "platforms": {
+          "type": "array",
+          "description": "Platforms for the campaign (e.g., Instagram, Facebook, YouTube).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "demoContent": {
+          "type": "array",
+          "description": "An array of links to demo or reference content.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "link": {
+                "type": "string",
+                "format": "uri"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "creatorIds": {
+          "type": "array",
+          "description": "References to Creators who joined this campaign. (Relationship: Creator N:N Campaign)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "businessId",
+        "brandName",
+        "brandLogo",
+        "name",
+        "visibility",
+        "type",
+        "description",
+        "startDate",
+        "endDate",
+        "requirements",
+        "status",
+        "platforms"
+      ]
+    },
+    "Submission": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Submission",
+      "type": "object",
+      "description": "Represents a creator's content submission for a campaign.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Submission."
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Reference to the Campaign."
+        },
+        "creatorId": {
+          "type": "string",
+          "description": "Reference to the Creator who made the submission."
+        },
+        "creatorName": {
+          "type": "string",
+          "description": "Denormalized name of the creator."
+        },
+        "postUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the social media post."
+        },
+        "username": {
+          "type": "string",
+          "description": "The creator's username on the platform."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the submission (e.g., pending, approved, rejected)."
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the submission."
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason provided by the business for rejecting a submission."
+        }
+      },
+      "required": [
+        "id",
+        "campaignId",
+        "creatorId",
+        "creatorName",
+        "postUrl",
+        "status",
+        "submittedAt"
+      ]
+    },
+    "CollaborationRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CollaborationRequest",
+      "type": "object",
+      "description": "Represents a collaboration request from a business to a creator.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the request."
+        },
+        "fromUserId": {
+          "type": "string",
+          "description": "The user ID of the business sending the request."
+        },
+        "fromUserName": {
+          "type": "string",
+          "description": "The name of the business sending the request."
+        },
+        "toUserId": {
+          "type": "string",
+          "description": "The user ID of the creator receiving the request."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the collaboration message."
+        },
+        "body": {
+          "type": "string",
+          "description": "The main content of the message."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the request (e.g., pending, accepted, rejected, read)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the request was created.",
+          "format": "date-time"
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Optional reference to a campaign related to the request."
+        }
+      },
+      "required": [
+        "id",
+        "fromUserId",
+        "toUserId",
+        "subject",
+        "body",
+        "status",
+        "createdAt"
+      ]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "type": "object",
+      "description": "Represents a campaign that a creator has added to their wishlist.",
+      "properties": {
+        "campaignId": {
+          "type": "string",
+          "description": "Reference to the Campaign entity."
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the campaign was added to the wishlist."
+        }
+      },
+      "required": [
+        "campaignId",
+        "addedAt"
+      ]
+    },
+    "Review": {
+      "title": "Review",
+      "type": "object",
+      "description": "Represents a public review or testimonial submitted by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Review."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the person who submitted the review."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the person (e.g., Creator, Business)."
+        },
+        "reviewText": {
+          "type": "string",
+          "description": "The content of the review."
+        },
+        "rating": {
+          "type": "number",
+          "description": "A star rating from 1 to 5."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the review was submitted."
+        },
+        "isApproved": {
+          "type": "boolean",
+          "description": "Whether the review is approved to be publicly visible."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "role",
+        "reviewText",
+        "rating",
+        "createdAt",
+        "isApproved"
+      ]
+    },
+    "Group": {
+      "title": "Group",
+      "type": "object",
+      "description": "Represents a chat group associated with a campaign.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Group, same as the campaign ID."
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Reference to the Campaign."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the group, usually same as the campaign name."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "The user ID of the business who created the campaign."
+        },
+        "memberIds": {
+          "type": "array",
+          "description": "An array of user IDs for all members of the group (creators).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the group was created."
+        }
+      },
+      "required": [
+        "id",
+        "campaignId",
+        "name",
+        "adminId",
+        "createdAt"
+      ]
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a single message within a group chat.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the message."
+        },
+        "groupId": {
+          "type": "string",
+          "description": "The ID of the group this message belongs to."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "The user ID of the message sender."
+        },
+        "senderName": {
+          "type": "string",
+          "description": "Denormalized name of the sender."
+        },
+        "senderAvatar": {
+          "type": "string",
+          "description": "Denormalized URL of the sender's avatar.",
+          "format": "uri"
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the message was sent."
+        },
+        "attachment": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" },
+            "type": { "type": "string", "enum": ["image", "file"] },
+            "name": { "type": "string" }
+          }
+        },
+        "reactions": {
+          "type": "object",
+          "description": "A map of emojis to user IDs who reacted.",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "replyTo": {
+          "type": "object",
+          "properties": {
+            "messageId": { "type": "string" },
+            "senderName": { "type": "string" },
+            "textSnippet": { "type": "string" }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "groupId",
+        "senderId",
+        "senderName",
+        "createdAt"
+      ]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a financial transaction, such as a business adding funds or a creator withdrawing earnings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the transaction."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user this transaction belongs to."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["deposit", "withdrawal", "payout", "spend"],
+          "description": "The type of transaction (e.g., adding funds, withdrawing, campaign spend)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the transaction."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "pending", "failed"],
+          "description": "The status of the transaction."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the transaction occurred."
+        },
+        "details": {
+          "type": "string",
+          "description": "A short description of the transaction (e.g., 'Added funds to wallet')."
+        }
+      },
+      "required": ["id", "userId", "type", "amount", "status", "date"]
+    },
+    "Earning": {
+      "title": "Earning",
+      "type": "object",
+      "description": "Represents earnings a creator has made from a campaign.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the earning record."
+        },
+        "creatorId": {
+          "type": "string",
+          "description": "Reference to the Creator who earned the amount."
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Reference to the Campaign from which the amount was earned."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount earned."
+        },
+        "views": {
+          "type": "number",
+          "description": "The number of verified views that generated this earning."
+        },
+        "earnedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the earning was recorded."
+        }
+      },
+      "required": ["id", "creatorId", "campaignId", "amount", "views", "earnedAt"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data. The userId parameter identifies the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/creatorProfile/{creatorProfileId}",
+        "definition": {
+          "entityName": "CreatorProfile",
+          "schema": {
+            "$ref": "#/backend/entities/CreatorProfile"
+          },
+          "description": "Stores profile information for creator users.  The userId parameter identifies the user who owns the profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "creatorProfileId",
+              "description": "The unique identifier for the creator profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/businessProfile/{businessProfileId}",
+        "definition": {
+          "entityName": "BusinessProfile",
+          "schema": {
+            "$ref": "#/backend/entities/BusinessProfile"
+          },
+          "description": "Stores profile information for business users. The userId parameter identifies the user who owns the profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "businessProfileId",
+              "description": "The unique identifier for the business profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/collaborationRequests/{requestId}",
+        "definition": {
+          "entityName": "CollaborationRequest",
+          "schema": {
+            "$ref": "#/backend/entities/CollaborationRequest"
+          },
+          "description": "Stores collaboration requests sent to a creator. The userId parameter identifies the creator receiving the request.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user (creator)."
+            },
+            {
+              "name": "requestId",
+              "description": "The unique identifier for the collaboration request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/wishlist/{campaignId}",
+        "definition": {
+          "entityName": "WishlistItem",
+          "schema": {
+            "$ref": "#/backend/entities/WishlistItem"
+          },
+          "description": "Stores a creator's wishlisted campaigns. The userId parameter identifies the creator.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user (creator)."
+            },
+            {
+              "name": "campaignId",
+              "description": "The unique identifier for the wishlisted campaign."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/campaigns/{campaignId}",
+        "definition": {
+          "entityName": "Campaign",
+          "schema": {
+            "$ref": "#/backend/entities/Campaign"
+          },
+          "description": "Stores campaign data. Includes denormalized 'businessId' field for authorization independence.",
+          "params": [
+            {
+              "name": "campaignId",
+              "description": "The unique identifier for the campaign."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/submissions/{submissionId}",
+        "definition": {
+          "entityName": "Submission",
+          "schema": {
+            "$ref": "#/backend/entities/Submission"
+          },
+          "description": "Stores content submissions from creators for campaigns. Includes 'creatorId' and 'campaignId'.",
+          "params": [
+            {
+              "name": "submissionId",
+              "description": "The unique identifier for the submission."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Stores public reviews submitted by users.",
+          "params": [
+            {
+              "name": "reviewId",
+              "description": "The unique identifier for the review."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/groups/{groupId}",
+        "definition": {
+          "entityName": "Group",
+          "schema": {
+            "$ref": "#/backend/entities/Group"
+          },
+          "description": "Stores campaign chat group data. The groupId is the same as the campaignId.",
+          "params": [
+            {
+              "name": "groupId",
+              "description": "The unique identifier for the group, same as campaignId."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/groups/{groupId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores messages for a specific campaign group.",
+          "params": [
+            {
+              "name": "groupId",
+              "description": "The identifier for the group."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores all financial transactions for both businesses and creators.",
+          "params": [
+            {
+              "name": "transactionId",
+              "description": "The unique identifier for the transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/earnings/{earningId}",
+        "definition": {
+          "entityName": "Earning",
+          "schema": {
+            "$ref": "#/backend/entities/Earning"
+          },
+          "description": "Stores verified earnings for creators from specific campaigns.",
+          "params": [
+            {
+              "name": "earningId",
+              "description": "The unique identifier for the earning."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, adhering to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). Authorization Independence is achieved through denormalization of authorization data. This eliminates the need for `get()` calls in security rules.  QAPs are supported through structural segregation, separating data with different access requirements into distinct collections, and through consistent use of membership maps for collaborative data.\n\nUsers:\nThe `/users/{userId}` collection stores user data.  User-owned data (profile information, wishlist) is stored in subcollections (`/users/{userId}/creatorProfile`, `/users/{userId}/businessProfile`, `/users/{userId}/wishlist`) to establish clear ownership. This structure simplifies security rules, as access control can be based solely on the user ID in the path.\n\nCollaboration Requests:\nRequests are stored in a subcollection under the recipient: `/users/{userId}/collaborationRequests/{requestId}`. This ensures that a creator can easily query for their own requests, and security rules can enforce that only the recipient can read them.\n\nCampaigns:\nCampaigns are stored in the `/campaigns/{campaignId}` collection. The `businessId` field indicates campaign ownership.  The `creatorIds` array stores IDs of Creators who have joined the campaign. Authorization Independence is maintained because each campaign document stores the business ID, removing reliance on parent document data for access control.\n\nSubmissions:\nA new `/submissions` collection is added to store content submitted by creators for campaigns. Each submission contains a `creatorId` and `campaignId`, allowing businesses to query for submissions related to their campaigns and for creators to view their own submissions.\n\nReviews:\nA new public `/reviews` collection is added. Security rules will allow anyone to write to this collection (to submit a review) but only allow reads for documents where `isApproved` is true, enabling a moderation flow.\n\nGroups & Messages:\nTo support campaign-specific chats, a new top-level `/groups` collection is added. Each group document uses the `campaignId` as its own ID, creating a clear 1:1 link. The group stores the `adminId` (the business) and an array of `memberIds` (creators). This structure is efficient for managing group membership. Messages are stored in a subcollection, `/groups/{groupId}/messages/{messageId}`, which is a scalable pattern for chat applications. The Message entity now includes `replyTo` and `reactions` fields to support richer chat interactions.\n\nFinancials:\nAdded `/transactions` and `/earnings` top-level collections. Storing these separately allows for dedicated, secure querying of financial data. Rules can be set so that users can only read their own transactions and earnings, maintaining privacy and security."
+  }
+}
