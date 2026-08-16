@@ -7,19 +7,23 @@ import {
   type AutoDMRule,
 } from '@/lib/instagram-messaging';
 
-// ── Firebase Admin initialisation (singleton) ────────────────────────────────
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
+// Force dynamic rendering — this route requires env vars at request time
+export const dynamic = 'force-dynamic';
 
-const db = getFirestore();
-const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN!;
+// ── Firebase Admin initialisation (lazy singleton) ───────────────────────────
+// Initialised inside a getter so it only runs at request time, never at build time.
+function getDb() {
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  }
+  return getFirestore();
+}
 
 // ── GET: Webhook Verification (Meta challenge) ──────────────────────────────
 // Meta sends: GET /api/instagram-webhook?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
@@ -30,6 +34,7 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
+  const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN!;
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     console.log('[Webhook] Verification successful');
     return new NextResponse(challenge, { status: 200 });
@@ -123,6 +128,7 @@ async function processIncomingInteraction(
   commentData?: { commentId: string; mediaId: string }
 ) {
   try {
+    const db = getDb();
     // 1. Find the connected account by ig_user_id (String)
     let accountsSnap = await db
       .collection('instagram_accounts')
