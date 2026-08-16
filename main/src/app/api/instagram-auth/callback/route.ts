@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Step 4: Persist to Firestore ─────────────────────────────────────
-    const db = getFirestore();
+    const db = getAdminFirestore();
     const uid = state; // state param carries the Firebase UID
 
     await db
