@@ -72,6 +72,16 @@ const campaignFormSchema = z.object({
     })
   ).optional(),
   couponCode: z.string().optional(),
+  ngoPaymentDetails: z.object({
+    upiId: z.string().optional(),
+    upiPaymentLink: z.string().optional(),
+    qrCodeUrl: z.string().optional(),
+    bankAccountName: z.string().optional(),
+    bankAccountNumber: z.string().optional(),
+    ifsc: z.string().optional(),
+    bankName: z.string().optional(),
+    paymentInstructions: z.string().optional(),
+  }).optional(),
 }).refine((data) => data.endDate > data.startDate, {
   message: "End date must be after start date.",
   path: ["endDate"],
@@ -94,7 +104,14 @@ const campaignFormSchema = z.object({
       return data.fundRaisePercentage !== undefined && data.fundRaisePercentage > 0;
     }
     return true;
-  }, { message: "Percentage of funds raise is required for this campaign type.", path: ["fundRaisePercentage"] });
+  }, { message: "Percentage of funds raise is required for this campaign type.", path: ["fundRaisePercentage"] })
+  .refine((data) => {
+    if (data.type === 'NGO Support') {
+      const { upiId, upiPaymentLink, qrCodeUrl, bankAccountNumber } = data.ngoPaymentDetails || {};
+      return !!(upiId || upiPaymentLink || qrCodeUrl || bankAccountNumber);
+    }
+    return true;
+  }, { message: "Please provide at least one payment method (UPI ID, UPI Payment Link, QR Code, or Bank Account).", path: ["ngoPaymentDetails"] });
 
 type CampaignFormValues = z.infer<typeof campaignFormSchema>;
 
@@ -130,6 +147,7 @@ export default function NewCampaignPage() {
       demoContent: [],
       tryItems: [],
       couponCode: '',
+      ngoPaymentDetails: { upiId: '', upiPaymentLink: '', qrCodeUrl: '', bankAccountName: '', bankAccountNumber: '', ifsc: '', bankName: '', paymentInstructions: '' },
     },
     mode: 'onChange',
   });
@@ -220,6 +238,16 @@ export default function NewCampaignPage() {
         imageUrl: item.imageUrl || null,
       })),
       couponCode: data.couponCode || null,
+      ngoPaymentDetails: data.type === 'NGO Support' ? {
+        upiId: data.ngoPaymentDetails?.upiId || '',
+        upiPaymentLink: data.ngoPaymentDetails?.upiPaymentLink || '',
+        qrCodeUrl: data.ngoPaymentDetails?.qrCodeUrl || '',
+        bankAccountName: data.ngoPaymentDetails?.bankAccountName || '',
+        bankAccountNumber: data.ngoPaymentDetails?.bankAccountNumber || '',
+        ifsc: data.ngoPaymentDetails?.ifsc || '',
+        bankName: data.ngoPaymentDetails?.bankName || '',
+        paymentInstructions: data.ngoPaymentDetails?.paymentInstructions || '',
+      } : null,
       // Dates as Timestamps
       startDate: data.startDate,
       endDate: data.endDate,
@@ -305,13 +333,7 @@ export default function NewCampaignPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Campaign Visibility</FormLabel>
-                    <Select onValueChange={(val) => {
-                      field.onChange(val);
-                      const currentType = form.getValues('type');
-                      if (val === 'public' && ['Crowd Funding', 'NGO Support'].includes(currentType)) {
-                        form.setValue('type', '');
-                      }
-                    }} value={field.value} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select campaign visibility" />
@@ -358,9 +380,7 @@ export default function NewCampaignPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="max-h-60">
-                          {campaignTypes
-                            .filter(type => campaignVisibility === 'private' || !['Crowd Funding', 'NGO Support'].includes(type))
-                            .map(type => (
+                          {campaignTypes.map(type => (
                             <SelectItem key={type} value={type}>{type}</SelectItem>
                           ))}
                         </SelectContent>
@@ -863,6 +883,28 @@ export default function NewCampaignPage() {
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
+          )}
+
+          {campaignType === 'NGO Support' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>NGO Donation Details</CardTitle>
+                <CardDescription>These details are shown publicly so donors can pay the NGO directly.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                {([
+                  ['upiId', 'UPI ID'], ['upiPaymentLink', 'UPI / Payment Link'], ['qrCodeUrl', 'QR Code Image URL'],
+                  ['bankAccountName', 'Bank Account Name'], ['bankAccountNumber', 'Bank Account Number'], ['ifsc', 'IFSC'], ['bankName', 'Bank Name'],
+                ] as const).map(([name, label]) => (
+                  <FormField key={name} control={form.control} name={`ngoPaymentDetails.${name}` as any} render={({ field }) => (
+                    <FormItem><FormLabel>{label}</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder={label} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                ))}
+                <FormField control={form.control} name="ngoPaymentDetails.paymentInstructions" render={({ field }) => (
+                  <FormItem className="md:col-span-2"><FormLabel>Payment Instructions</FormLabel><FormControl><Textarea {...field} placeholder="Tell donors what to mention in the payment note or how to pay." /></FormControl><FormMessage /></FormItem>
+                )} />
               </CardContent>
             </Card>
           )}

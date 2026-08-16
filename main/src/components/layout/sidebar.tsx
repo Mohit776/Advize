@@ -66,6 +66,7 @@ export function Sidebar() {
         { name: 'Feed', href: '/feed', icon: Rss },
         { name: 'Messages', href: '/business/messages', icon: MessageSquare },
         { name: 'Wallet', href: '/business/wallet', icon: Wallet },
+        { name: 'Donations', href: '/business/donations', icon: TrendingUp },
     ];
 
     // Creator-specific navigation

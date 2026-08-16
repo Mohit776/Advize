@@ -34,6 +34,16 @@ export type Campaign = {
     imageUrl?: string | null;
   }[];
   couponCode?: string;
+  ngoPaymentDetails?: {
+    upiId?: string;
+    upiPaymentLink?: string;
+    qrCodeUrl?: string;
+    bankAccountName?: string;
+    bankAccountNumber?: string;
+    ifsc?: string;
+    bankName?: string;
+    paymentInstructions?: string;
+  } | null;
 };
 
 export type User = {
@@ -282,4 +292,26 @@ export type CreatorSearchResult = {
   country?: string;
   age?: number;
   gender?: string;
+};
+
+
+export type Donation = {
+  id: string;
+  campaignId: string;
+  businessId: string;
+  creatorId?: string | null;
+  donorName: string;
+  donorEmail: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  transactionReference: string;
+  paymentDate: any;
+  paymentProofUrl?: string | null;
+  status: 'submitted' | 'under_review' | 'verified' | 'rejected';
+  createdAt: any;
+  updatedAt: any;
+  verifiedAt?: any;
+  verifiedBy?: string | null;
+  rejectionReason?: string | null;
 };

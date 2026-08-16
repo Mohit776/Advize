@@ -21,6 +21,7 @@ import { SubmitContentModal } from '@/app/campaigns/[campaignId]/_components/sub
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -28,7 +29,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { Campaign, Earning, Submission, User } from '@/lib/types';
+import type { Campaign, Earning, Submission, User, Donation } from '@/lib/types';
 import { useParams } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
@@ -204,12 +205,23 @@ export default function CreatorCampaignDetailPage() {
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionQuery);
   const submission = useMemo(() => submissions?.[0], [submissions]);
 
+  const donationsQuery = useMemoFirebase(
+    () => (user && campaignId && campaign?.type === 'NGO Support') ? query(collection(firestore, 'donations'), where('campaignId', '==', campaignId), where('creatorId', '==', user.uid)) : null,
+    [campaignId, firestore, user, campaign]
+  );
+  const { data: donations } = useCollection<Donation>(donationsQuery);
+
   const earningsQuery = useMemoFirebase(
     () => (user && campaignId) ? query(collection(firestore, 'earnings'), where('campaignId', '==', campaignId), where('creatorId', '==', user.uid)) : null,
     [campaignId, firestore, user]
   );
   const { data: earnings, isLoading: earningsLoading } = useCollection<Earning>(earningsQuery);
   const earning = useMemo(() => earnings?.[0], [earnings]);
+
+  const isNgoCampaign = campaign?.type === 'NGO Support' && !!user && (campaign.creatorIds || []).includes(user.uid);
+  const creatorHandle = (user as any)?.username || user?.uid;
+  const donationLink = typeof window !== 'undefined' && campaign ? `${window.location.origin}/donate/${campaign.id}?ref=${creatorHandle}` : '';
+  const copyDonationLink = async () => { if (!donationLink) return; await navigator.clipboard.writeText(donationLink); };
 
   // Fetch real post stats from Apify to populate KPIs
   const [scrapedPostData, setScrapedPostData] = useState<any>(null);
@@ -291,6 +303,20 @@ export default function CreatorCampaignDetailPage() {
 
   return (
     <div className="flex-1 space-y-6">
+      {isNgoCampaign && (
+        <Card>
+          <CardHeader><CardTitle>Share NGO Donation Link</CardTitle><CardDescription>Share this link on Instagram to attribute donations to you.</CardDescription></CardHeader>
+          <CardContent><div className="flex flex-col sm:flex-row gap-2"><Input readOnly value={donationLink} /><Button onClick={copyDonationLink}>Copy Link</Button></div></CardContent>
+        </Card>
+      )}
+
+      {isNgoCampaign && (
+        <Card>
+          <CardHeader><CardTitle>Donation Performance</CardTitle><CardDescription>Donations attributed to your referral link.</CardDescription></CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4"><div><p className="text-2xl font-bold">{donations?.length || 0}</p><p className="text-sm text-muted-foreground">Donors</p></div><div><p className="text-2xl font-bold">₹{(donations || []).filter(d => d.status === 'verified').reduce((sum, d) => sum + Number(d.amount || 0), 0).toLocaleString('en-IN')}</p><p className="text-sm text-muted-foreground">Verified donations</p></div></CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

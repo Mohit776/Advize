@@ -90,6 +90,29 @@ match /groups/{groupId} {
   }
 }
 
+    // DONATIONS: Public donors submit through the trusted Next.js API using Admin SDK.
+    // Creators can read donations attributed to them; campaign businesses can read and verify their donations.
+    match /donations/{donationId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.businessId ||
+        request.auth.uid == resource.data.creatorId
+      );
+      allow create: if false;
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.businessId &&
+        request.resource.data.businessId == resource.data.businessId &&
+        request.resource.data.campaignId == resource.data.campaignId &&
+        request.resource.data.creatorId == resource.data.creatorId &&
+        request.resource.data.donorName == resource.data.donorName &&
+        request.resource.data.donorEmail == resource.data.donorEmail &&
+        request.resource.data.amount == resource.data.amount &&
+        request.resource.data.transactionReference == resource.data.transactionReference &&
+        (resource.data.status == 'submitted' || resource.data.status == 'under_review') &&
+        (request.resource.data.status == 'verified' || request.resource.data.status == 'rejected') &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'verifiedAt', 'verifiedBy', 'rejectionReason', 'updatedAt']);
+      allow delete: if false;
+    }
+
     // TRANSACTIONS: Owner only
     match /transactions/{transactionId} {
       // Allow user to read/write their own transaction documents.

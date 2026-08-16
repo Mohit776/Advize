@@ -112,7 +112,7 @@ export function CampaignCard({
         </div>
         <div className="flex flex-col items-end gap-2">
           <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
-            {visibility === 'public' && cpmRate ? `₹${cpmRate} CPM` : `₹${fixedPayPerCreator ?? 0}`}
+            {type === 'NGO Support' ? 'NGO Support' : type === 'Crowd Funding' ? 'Crowd Funding' : visibility === 'public' && cpmRate ? `₹${cpmRate} CPM` : `₹${fixedPayPerCreator ?? 0}`}
           </Badge>
         </div>
       </CardHeader>
