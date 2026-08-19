@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +30,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const campaignFormSchema = z.object({
   name: z.string().min(5, 'Campaign name must be at least 5 characters.'),
@@ -126,6 +125,7 @@ export default function NewCampaignPage() {
   const firestore = useFirestore();
   const storage = useStorage();
   const [uploadingTryItemIndex, setUploadingTryItemIndex] = useState<number | null>(null);
+  const [uploadingQrCode, setUploadingQrCode] = useState(false);
 
   const userRef = useMemoFirebase(
     () => (user ? doc(firestore, 'users', user.uid) : null),
@@ -165,6 +165,36 @@ export default function NewCampaignPage() {
   const campaignType = form.watch('type');
   const campaignVisibility = form.watch('visibility');
 
+  // Prefill NGO payment details from the business's saved profile so they
+  // don't have to be re-entered for every new NGO campaign. Only runs when
+  // the form's payment fields are still empty, so it never clobbers changes
+  // the user is actively making on this form.
+  useEffect(() => {
+    if (campaignType !== 'NGO Support' || !userData?.ngoPaymentDetails) return;
+
+    const current = form.getValues('ngoPaymentDetails');
+    const isEmpty =
+      !current?.upiId &&
+      !current?.upiPaymentLink &&
+      !current?.qrCodeUrl &&
+      !current?.bankAccountNumber &&
+      !current?.paymentInstructions;
+
+    if (isEmpty) {
+      form.setValue('ngoPaymentDetails', {
+        upiId: userData.ngoPaymentDetails.upiId || '',
+        upiPaymentLink: userData.ngoPaymentDetails.upiPaymentLink || '',
+        qrCodeUrl: userData.ngoPaymentDetails.qrCodeUrl || '',
+        bankAccountName: userData.ngoPaymentDetails.bankAccountName || '',
+        bankAccountNumber: userData.ngoPaymentDetails.bankAccountNumber || '',
+        ifsc: userData.ngoPaymentDetails.ifsc || '',
+        bankName: userData.ngoPaymentDetails.bankName || '',
+        paymentInstructions: userData.ngoPaymentDetails.paymentInstructions || '',
+      }, { shouldValidate: false, shouldDirty: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignType, userData]);
+
   const handleTryItemImageUpload = async (file: File, index: number) => {
     if (!user || !storage) {
       toast({
@@ -199,6 +229,40 @@ export default function NewCampaignPage() {
     }
   };
 
+  const handleQrCodeUpload = async (file: File) => {
+    if (!user || !storage) {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Please login again and retry the image upload.',
+      });
+      return;
+    }
+
+    try {
+      setUploadingQrCode(true);
+      const safeName = file.name.replace(/\s+/g, '-');
+      const imageRef = ref(storage, `ngo-payment-qr/${user.uid}/${Date.now()}-${safeName}`);
+      const snapshot = await uploadBytes(imageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      form.setValue('ngoPaymentDetails.qrCodeUrl', downloadURL, { shouldDirty: true, shouldValidate: true });
+
+      toast({
+        title: 'QR Code Uploaded',
+        description: 'Your payment QR code was uploaded successfully.',
+      });
+    } catch (error) {
+      console.error('Error uploading QR code image:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Could not upload QR code image. Please try again.',
+      });
+    } finally {
+      setUploadingQrCode(false);
+    }
+  };
+
   async function onSubmit(data: CampaignFormValues) {
     if (!user || !userData || !firestore) {
       toast({ variant: "destructive", title: "Error", description: "You must be logged in to create a campaign." });
@@ -209,6 +273,17 @@ export default function NewCampaignPage() {
     const campaignsColRef = collection(firestore, 'campaigns');
     const newCampaignRef = doc(campaignsColRef); // Create a reference with a new ID
     const campaignId = newCampaignRef.id;
+
+    const ngoPaymentDetailsForCampaign = data.type === 'NGO Support' ? {
+      upiId: data.ngoPaymentDetails?.upiId || '',
+      upiPaymentLink: data.ngoPaymentDetails?.upiPaymentLink || '',
+      qrCodeUrl: data.ngoPaymentDetails?.qrCodeUrl || '',
+      bankAccountName: data.ngoPaymentDetails?.bankAccountName || '',
+      bankAccountNumber: data.ngoPaymentDetails?.bankAccountNumber || '',
+      ifsc: data.ngoPaymentDetails?.ifsc || '',
+      bankName: data.ngoPaymentDetails?.bankName || '',
+      paymentInstructions: data.ngoPaymentDetails?.paymentInstructions || '',
+    } : null;
 
     const finalCampaignData = {
       id: campaignId,
@@ -238,16 +313,7 @@ export default function NewCampaignPage() {
         imageUrl: item.imageUrl || null,
       })),
       couponCode: data.couponCode || null,
-      ngoPaymentDetails: data.type === 'NGO Support' ? {
-        upiId: data.ngoPaymentDetails?.upiId || '',
-        upiPaymentLink: data.ngoPaymentDetails?.upiPaymentLink || '',
-        qrCodeUrl: data.ngoPaymentDetails?.qrCodeUrl || '',
-        bankAccountName: data.ngoPaymentDetails?.bankAccountName || '',
-        bankAccountNumber: data.ngoPaymentDetails?.bankAccountNumber || '',
-        ifsc: data.ngoPaymentDetails?.ifsc || '',
-        bankName: data.ngoPaymentDetails?.bankName || '',
-        paymentInstructions: data.ngoPaymentDetails?.paymentInstructions || '',
-      } : null,
+      ngoPaymentDetails: ngoPaymentDetailsForCampaign,
       // Dates as Timestamps
       startDate: data.startDate,
       endDate: data.endDate,
@@ -262,6 +328,17 @@ export default function NewCampaignPage() {
 
     // Set the campaign document with the new ID
     await setDocumentNonBlocking(newCampaignRef, finalCampaignData, {});
+
+    // 1b. Save/update the NGO payment details on the business's own profile
+    // so they're reused automatically next time, without asking again.
+    if (data.type === 'NGO Support' && ngoPaymentDetailsForCampaign) {
+      const businessUserRef = doc(firestore, 'users', user.uid);
+      await setDocumentNonBlocking(
+        businessUserRef,
+        { ngoPaymentDetails: ngoPaymentDetailsForCampaign },
+        { merge: true }
+      );
+    }
 
     // 2. Create the corresponding group document
     const groupRef = doc(firestore, 'groups', campaignId); // Use campaignId as groupId
@@ -578,180 +655,102 @@ export default function NewCampaignPage() {
                 <CardTitle>Timeline & Budget</CardTitle>
                 <CardDescription>Define the financial and time constraints of your campaign.</CardDescription>
               </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Start Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0))
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>End Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < (form.getValues("startDate") || new Date())
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              {campaignVisibility === 'public' ? (
-                <>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="budget"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Total Budget (₹)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="50000" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="cpmRate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CPM Rate (₹)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="1500" {...field} />
-                          </FormControl>
-                          <FormDescription>Cost per 1,000 views.</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="maxPayPerCreator"
+                    name="startDate"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Maximum Pay Per Creator (₹)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="10000" {...field} />
-                        </FormControl>
-                        <FormDescription>The most any single creator can earn from this campaign, regardless of views.</FormDescription>
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Start Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date(new Date().setHours(0, 0, 0, 0))
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </>
-              ) : (
-                <>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="fixedPayPerCreator"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fixed Pay Per Creator (₹)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="5000" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="numberOfCreators"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Number of Creators</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="10" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <Card className="bg-muted/50 border-dashed">
-                    <CardHeader>
-                      <CardTitle className="text-base">Creator Requirements</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>End Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < (form.getValues("startDate") || new Date())
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                {campaignVisibility === 'public' ? (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="minFollowers"
+                        name="budget"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Min Followers</FormLabel>
+                            <FormLabel>Total Budget (₹)</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="10000" {...field} />
+                              <Input type="number" placeholder="50000" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -759,23 +758,101 @@ export default function NewCampaignPage() {
                       />
                       <FormField
                         control={form.control}
-                        name="maxFollowers"
+                        name="cpmRate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Max Followers</FormLabel>
+                            <FormLabel>CPM Rate (₹)</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="500000" {...field} />
+                              <Input type="number" placeholder="1500" {...field} />
+                            </FormControl>
+                            <FormDescription>Cost per 1,000 views.</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="maxPayPerCreator"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Maximum Pay Per Creator (₹)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="10000" {...field} />
+                          </FormControl>
+                          <FormDescription>The most any single creator can earn from this campaign, regardless of views.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="fixedPayPerCreator"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Fixed Pay Per Creator (₹)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="5000" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </CardContent>
-                  </Card>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                      <FormField
+                        control={form.control}
+                        name="numberOfCreators"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Number of Creators</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="10" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Card className="bg-muted/50 border-dashed">
+                      <CardHeader>
+                        <CardTitle className="text-base">Creator Requirements</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid sm:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="minFollowers"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Min Followers</FormLabel>
+                              <FormControl>
+                                <Input type="number" placeholder="10000" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="maxFollowers"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Max Followers</FormLabel>
+                              <FormControl>
+                                <Input type="number" placeholder="500000" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {['Crowd Funding', 'NGO Support'].includes(campaignType) && (
@@ -891,20 +968,63 @@ export default function NewCampaignPage() {
             <Card>
               <CardHeader>
                 <CardTitle>NGO Donation Details</CardTitle>
-                <CardDescription>These details are shown publicly so donors can pay the NGO directly.</CardDescription>
+                <CardDescription>
+                  These details are shown publicly so donors can pay the NGO directly.
+                </CardDescription>
               </CardHeader>
+
               <CardContent className="grid gap-4 md:grid-cols-2">
-                {([
-                  ['upiId', 'UPI ID'], ['upiPaymentLink', 'UPI / Payment Link'], ['qrCodeUrl', 'QR Code Image URL'],
-                  ['bankAccountName', 'Bank Account Name'], ['bankAccountNumber', 'Bank Account Number'], ['ifsc', 'IFSC'], ['bankName', 'Bank Name'],
-                ] as const).map(([name, label]) => (
-                  <FormField key={name} control={form.control} name={`ngoPaymentDetails.${name}` as any} render={({ field }) => (
-                    <FormItem><FormLabel>{label}</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder={label} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                ))}
-                <FormField control={form.control} name="ngoPaymentDetails.paymentInstructions" render={({ field }) => (
-                  <FormItem className="md:col-span-2"><FormLabel>Payment Instructions</FormLabel><FormControl><Textarea {...field} placeholder="Tell donors what to mention in the payment note or how to pay." /></FormControl><FormMessage /></FormItem>
-                )} />
+
+                {/* payment fields */}
+
+                <FormField
+                  control={form.control}
+                  name="ngoPaymentDetails.qrCodeUrl"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Payment QR Code</FormLabel>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const selectedFile = e.target.files?.[0];
+
+                            if (selectedFile) {
+                              handleQrCodeUpload(selectedFile);
+                            }
+                          }}
+                          className="max-w-xs"
+                        />
+
+                        <Input
+                          placeholder="or paste QR code image URL"
+                          {...field}
+                          value={field.value || ''}
+                          className="flex-1 min-w-[220px]"
+                        />
+                      </div>
+
+                      {field.value && (
+                        <img
+                          src={field.value}
+                          alt="Payment QR code"
+                          className="h-24 w-24 rounded-md object-cover border mt-2"
+                        />
+                      )}
+
+                      {uploadingQrCode && (
+                        <FormDescription>
+                          Uploading QR code...
+                        </FormDescription>
+                      )}
+
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
               </CardContent>
             </Card>
           )}

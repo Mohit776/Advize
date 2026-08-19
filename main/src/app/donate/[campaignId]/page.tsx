@@ -74,6 +74,21 @@ export default function DonatePage() {
 
   const payment = campaign?.ngoPaymentDetails;
 
+  // The NGO's profile image, used as the page background. It's already
+  // denormalized onto the campaign document as `brandLogo` when the
+  // campaign was created (business's users/{uid}.logoUrl at that time),
+  // so no extra Firestore read is needed here.
+  const ngoBackgroundUrl = campaign?.brandLogo || null;
+  const pageBackgroundStyle = ngoBackgroundUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(15, 15, 15, 0.72), rgba(15, 15, 15, 0.72)), url(${ngoBackgroundUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat',
+      }
+    : undefined;
+
   const copy = async (value: string) => {
     await navigator.clipboard.writeText(value);
     toast({ title: 'Copied to clipboard' });
@@ -133,7 +148,7 @@ export default function DonatePage() {
 
   if (submitted && receiptData) {
     return (
-      <main className="min-h-screen bg-muted/30 px-4 py-8 md:py-12">
+      <main className="min-h-screen bg-muted/30 px-4 py-8 md:py-12" style={pageBackgroundStyle}>
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="border-green-500/30 shadow-lg">
             <CardHeader className="text-center pb-4 border-b bg-green-500/5">
@@ -201,17 +216,25 @@ export default function DonatePage() {
       </main>
     );
   }
-
+console.log(ngoBackgroundUrl);
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-6 md:py-10">
+    <main className="min-h-screen bg-muted/30 px-4 py-6 md:py-10" style={pageBackgroundStyle}>
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Campaign Header Card */}
         <Card className="border-primary/20 shadow-sm">
           <CardContent className="pt-7">
             <div className="flex gap-4 items-center">
-              <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Heart className="h-8 w-8 text-primary" />
-              </div>
+              {ngoBackgroundUrl ? (
+                <img
+                  src={ngoBackgroundUrl}
+                  alt={campaign.brandName ? `${campaign.brandName} logo` : 'NGO logo'}
+                  className="h-16 w-16 rounded-xl object-cover border flex-shrink-0"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Heart className="h-8 w-8 text-primary" />
+                </div>
+              )}
               <div>
                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">NGO Support</Badge>
                 <h1 className="text-2xl font-bold mt-1">{campaign.name}</h1>
