@@ -1,4 +1,5 @@
 'use client';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -14,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+
 import {
   Form,
   FormControl,
@@ -23,30 +25,44 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+
+import {
+  doc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 
 const schema = z.object({
-  link: z.string().url({ message: 'Please enter a valid URL.' }),
+  link: z.string().url({
+    message: 'Please enter a valid URL.',
+  }),
 });
 
 interface SubmitContentModalProps {
   children: React.ReactNode;
   submissionId: string;
+  currentPostUrl?: string;
 }
 
-export function SubmitContentModal({ children, submissionId }: SubmitContentModalProps) {
+export function SubmitContentModal({
+  children,
+  submissionId,
+  currentPostUrl,
+}: SubmitContentModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const { toast } = useToast();
   const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
-      link: '',
+      link: currentPostUrl || '',
     },
   });
 
@@ -54,23 +70,41 @@ export function SubmitContentModal({ children, submissionId }: SubmitContentModa
     if (!firestore || !submissionId) return;
 
     setIsLoading(true);
+
     try {
-      const submissionRef = doc(firestore, 'submissions', submissionId);
+      const submissionRef = doc(
+        firestore,
+        'submissions',
+        submissionId
+      );
+
       await updateDoc(submissionRef, {
         postUrl: values.link,
+        status: 'pending',
+        rejectionReason: null,
+        submittedAt: serverTimestamp(),
+        resubmittedAt: serverTimestamp(),
       });
 
       toast({
-        title: 'Content Submitted Successfully!',
-        description: 'Your changes have been saved.',
+        title: 'Reel Submitted',
+        description:
+          'Your Reel has been submitted and is pending verification.',
       });
+
       setIsOpen(false);
-      form.reset();
+
+      form.reset({
+        link: '',
+      });
     } catch (error) {
+      console.error('Error submitting content:', error);
+
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'An error occurred while submitting your content. Please try again.',
+        description:
+          'An error occurred while submitting your Reel. Please try again.',
       });
     } finally {
       setIsLoading(false);
@@ -78,31 +112,76 @@ export function SubmitContentModal({ children, submissionId }: SubmitContentModa
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+
+        if (open) {
+          form.reset({
+            link: currentPostUrl || '',
+          });
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Submit Content</DialogTitle>
+          <DialogTitle>
+            {currentPostUrl
+              ? 'Update Submitted Reel'
+              : 'Submit Reel'}
+          </DialogTitle>
+
           <DialogDescription>
-            Enter the URL of your post or video to be tracked for this campaign.
+            {currentPostUrl
+              ? 'Enter the new Instagram Reel URL. The new Reel will be sent for verification again.'
+              : 'Enter the URL of the Instagram Reel you created for this campaign.'}
           </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-6"
+          >
             <FormField
               control={form.control}
               name="link"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Post Link</FormLabel>
+                  <FormLabel>Instagram Reel Link</FormLabel>
+
                   <FormControl>
-                    <Input placeholder="https://instagram.com/p/..." {...field} />
+                    <Input
+                      placeholder="https://www.instagram.com/reel/..."
+                      {...field}
+                    />
                   </FormControl>
-                  <FormDescription>The direct URL to your video or post.</FormDescription>
+
+                  <FormDescription>
+                    Paste the direct URL of the Reel you created for this campaign.
+                  </FormDescription>
+
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {currentPostUrl && (
+              <div className="rounded-md border bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Changing the Reel will reset the submission status to{' '}
+                  <span className="font-semibold text-foreground">
+                    Pending
+                  </span>{' '}
+                  and the new Reel will be verified again.
+                </p>
+              </div>
+            )}
 
             <DialogFooter>
               <Button
@@ -113,8 +192,16 @@ export function SubmitContentModal({ children, submissionId }: SubmitContentModa
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Submitting...' : 'Submit Link'}
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading
+                  ? 'Submitting...'
+                  : currentPostUrl
+                    ? 'Submit for Re-verification'
+                    : 'Submit Reel'}
               </Button>
             </DialogFooter>
           </form>

@@ -121,14 +121,19 @@ export function JoinCampaignModal({
     }
 
     // 1. Add submission to the 'submissions' collection
+    // For private campaigns, submittedLink is the creator's profile link — it's
+    // an application, not content, so it must NOT populate postUrl. postUrl stays
+    // empty until the creator submits real content after approval.
+    const isPrivate = visibility === 'private';
     const submissionsColRef = collection(firestore, 'submissions');
     addDocumentNonBlocking(submissionsColRef, {
       campaignId: campaignId,
       businessId: businessId, // Required by security rules
       creatorId: user.uid,
       creatorName: creatorName,
-      postUrl: submittedLink || '',
-      username: submittedLink || '', // Use the same value for simplicity for now
+      postUrl: isPrivate ? '' : (submittedLink || ''),
+      profileLink: isPrivate ? (submittedLink || '') : '',
+      username: submittedLink || '',
       status: 'pending',
       submittedAt: serverTimestamp(),
     });
