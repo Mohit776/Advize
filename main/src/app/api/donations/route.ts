@@ -36,32 +36,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This campaign is not accepting donations.' }, { status: 400 });
     }
 
-    // Verify creator if provided
+    // Verify creator if provided.
+    //
+    // creatorId now always arrives as a real Firebase Auth uid — it's
+    // resolved client-side from the combined "{campaignId}_{creatorUid}"
+    // donation link (see the donate page and creator dashboard), not a
+    // freeform ref string that could be a doc id OR a username. So a
+    // single direct doc lookup by uid is sufficient; no username-query
+    // fallback is needed anymore.
     let verifiedCreatorId: string | null = null;
     let creatorName: string | null = null;
     let creatorUsername: string | null = null;
 
     if (creatorId) {
-      const cleanRef = String(creatorId).trim().replace(/^@/, '');
-      // 1. Try lookup by direct document ID (UID)
-      const creatorByUidSnap = await db.collection('users').doc(cleanRef).get();
-      if (creatorByUidSnap.exists && (campaign.creatorIds || []).includes(cleanRef)) {
-        verifiedCreatorId = cleanRef;
-        const data = creatorByUidSnap.data()!;
+      const creatorUid = String(creatorId).trim();
+      const creatorSnap = await db.collection('users').doc(creatorUid).get();
+
+      if (creatorSnap.exists && (campaign.creatorIds || []).includes(creatorUid)) {
+        verifiedCreatorId = creatorUid;
+        const data = creatorSnap.data()!;
         creatorName = data.name || null;
         creatorUsername = data.username || null;
-      } else {
-        // 2. Try lookup by username
-        const creatorByUsernameQuery = await db.collection('users').where('username', '==', cleanRef).limit(1).get();
-        if (!creatorByUsernameQuery.empty) {
-          const docSnap = creatorByUsernameQuery.docs[0];
-          if ((campaign.creatorIds || []).includes(docSnap.id)) {
-            verifiedCreatorId = docSnap.id;
-            const data = docSnap.data();
-            creatorName = data.name || null;
-            creatorUsername = data.username || null;
-          }
-        }
       }
 
       // Note: We allow donations even if creator verification fails - just attribute will be missing
@@ -71,8 +66,8 @@ export async function POST(request: Request) {
     }
 
     // Generate or use provided transaction reference
-    const finalTransactionReference = transactionReference 
-      ? String(transactionReference).trim() 
+    const finalTransactionReference = transactionReference
+      ? String(transactionReference).trim()
       : `ADVIZE-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
     // Use provided payment date or current date
@@ -151,4 +146,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Could not submit donation.' }, { status: 500 });
   }
 }
-

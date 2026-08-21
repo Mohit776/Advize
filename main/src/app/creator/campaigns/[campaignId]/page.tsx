@@ -527,6 +527,16 @@ export default function CreatorCampaignDetailPage() {
 
   /* =====================================================
      NGO LINK
+
+     The share link is a single combined segment,
+     "{campaignId}_{creatorUid}", not a campaign id with
+     a `?ref=` query param. Both halves are real, known-good
+     ids (a Firestore campaign doc id and the signed-in
+     creator's Firebase Auth uid) — no reliance on a
+     `.username` field that never actually exists on the
+     Auth user object. The donate page resolves both ids
+     directly by document lookup and saves any donation
+     against this exact uid, so attribution can never drift.
   ===================================================== */
 
   const isNgoCampaign =
@@ -536,17 +546,11 @@ export default function CreatorCampaignDetailPage() {
       user.uid
     );
 
-  const creatorHandle =
-    (user as any)?.username ||
-    user?.uid ||
-    '';
-
   const donationLink =
     typeof window !== 'undefined' &&
-      campaign
-      ? `${window.location.origin}/donate/${campaign.id}?ref=${encodeURIComponent(
-        creatorHandle
-      )}`
+      campaign &&
+      user
+      ? `${window.location.origin}/donate/${campaign.id}_${user.uid}`
       : '';
 
   const copyDonationLink =
@@ -1345,10 +1349,6 @@ export default function CreatorCampaignDetailPage() {
                           Post Link
                         </h4>
 
-                        {/* APPROVED:
-                            UPDATE
-                        */}
-
                         {/* SUBMIT / UPDATE / RESUBMIT */}
 
                         {/* APPROVED + NO REEL → SUBMIT REEL */}
@@ -1397,30 +1397,6 @@ export default function CreatorCampaignDetailPage() {
                             </Button>
                           </SubmitContentModal>
                         )}
-
-                        {/* REJECTED:
-                            RESUBMIT
-                        */}
-
-                        {submission.status ===
-                          'rejected' && (
-                            <SubmitContentModal
-                              submissionId={
-                                submission.id
-                              }
-                              currentPostUrl={
-                                submission.postUrl
-                              }
-                            >
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8"
-                              >
-                                Resubmit Reel
-                              </Button>
-                            </SubmitContentModal>
-                          )}
 
                       </div>
 
