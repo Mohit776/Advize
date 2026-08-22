@@ -955,7 +955,7 @@ export default function NewCampaignPage() {
                       <FormControl>
                         <Input type="number" placeholder="10" {...field} />
                       </FormControl>
-                      <FormDescription>Percentage of the raised funds that will go to creators/platform.</FormDescription>
+                      <FormDescription>Percentage of the raised funds that will go to creators only + 5% platform fee.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
