@@ -1,23 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   doc,
   getDoc,
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
 } from 'firebase/firestore';
 import {
   ref as storageRef,
   uploadBytes,
   getDownloadURL,
 } from 'firebase/storage';
-import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import type { Campaign, Donation } from '@/lib/types';
+import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/firebase';
+import type { Campaign } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -82,16 +77,45 @@ export default function DonatePage() {
   const [submitted, setSubmitted] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const userRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [user, firestore]
-  );
   const [creatorUser, setCreatorUser] = useState<{
     name: string;
     username?: string;
     logoUrl?: string;
   } | null>(null);
   const storage = useStorage();
+
+  // Leaderboard state — fetched from the public Admin SDK API route
+  // so Firestore client security rules (which block unauthenticated reads)
+  // don't prevent donors from seeing the top-25 list.
+  const [leaderboard, setLeaderboard] = useState<{
+    rank: number;
+    donorName: string;
+    amount: number;
+    creatorName: string | null;
+    creatorUsername: string | null;
+  }[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  const fetchLeaderboard = useCallback(async () => {
+    if (!campaignId) return;
+    setLeaderboardLoading(true);
+    try {
+      const params = new URLSearchParams({ campaignId });
+      if (creatorId) params.set('creatorId', creatorId);
+      const res = await fetch(`/api/donations/leaderboard?${params}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setLeaderboard(data.donors ?? []);
+    } catch (err) {
+      console.error('Failed to fetch leaderboard', err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [campaignId, creatorId]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
 
   const [form, setForm] = useState({
     donorName: '',
@@ -168,32 +192,6 @@ export default function DonatePage() {
     data: campaign,
     isLoading,
   } = useDoc<Campaign>(campaignRef);
-
-  /*
-   * Top 10 donors for this campaign, ranked by amount.
-   * Only verified donations count toward the leaderboard — submitted /
-   * under_review donations haven't been confirmed by the NGO yet, and
-   * rejected ones shouldn't be shown at all.
-   *
-   * Note: this composite query (campaignId + status + orderBy amount)
-   * needs a Firestore composite index. On first run, check the console
-   * for an index-creation link if the query errors out.
-   */
-  const topDonorsQuery = useMemoFirebase(
-    () =>
-      campaignId
-        ? query(
-          collection(firestore, 'donations'),
-          where('campaignId', '==', campaignId),
-          where('status', '==', 'verified'),
-          orderBy('amount', 'desc'),
-          limit(10)
-        )
-        : null,
-    [campaignId, firestore]
-  );
-
-  const { data: topDonors, isLoading: topDonorsLoading } = useCollection<Donation>(topDonorsQuery);
 
   /*
    * Load creator information directly by uid — creatorId is the real
@@ -388,6 +386,10 @@ export default function DonatePage() {
       );
 
       setSubmitted(true);
+      // Refresh leaderboard after a successful submission (status is 'submitted'
+      // initially, so donors won't appear until verified — but refresh anyway
+      // so new verifications show up if a business verifies in real time).
+      fetchLeaderboard();
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -692,46 +694,79 @@ export default function DonatePage() {
           </CardContent>
         </Card>
 
-        {/* Top Donors Leaderboard */}
-        {!topDonorsLoading && topDonors && topDonors.length > 0 && (
+        {/* Top Donors Leaderboard — via public API (Admin SDK) */}
+        {!leaderboardLoading && leaderboard.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-yellow-500" />
-                Top Donors
+                Top {leaderboard.length} Donors
+                {creatorId && creatorUser && (
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    via {creatorUser.name}
+                  </span>
+                )}
               </CardTitle>
 
               <CardDescription>
-                The most generous supporters of this campaign so far.
+                {creatorId
+                  ? `Verified donors who supported this campaign through this creator's referral link.`
+                  : `The most generous verified supporters of this campaign.`}
               </CardDescription>
             </CardHeader>
 
-            <CardContent>
-              <div className="space-y-2">
-                {topDonors.map((donor, index) => (
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {leaderboard.map((donor) => (
                   <div
-                    key={donor.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                    key={donor.rank}
+                    className={`flex items-center justify-between gap-3 px-6 py-3 ${
+                      donor.rank <= 3 ? 'bg-muted/30' : ''
+                    }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span
-                        className={`flex-shrink-0 h-7 w-7 rounded-full border flex items-center justify-center text-xs font-bold ${RANK_STYLES[index] || 'bg-muted text-muted-foreground border-border'
-                          }`}
+                        className={`flex-shrink-0 h-8 w-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                          RANK_STYLES[donor.rank - 1] || 'bg-muted text-muted-foreground border-border'
+                        }`}
                       >
-                        {index + 1}
+                        {donor.rank <= 3 ? ['🥇','🥈','🥉'][donor.rank - 1] : donor.rank}
                       </span>
 
-                      <p className="font-medium truncate">
-                        {donor.donorName}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate leading-tight">
+                          {donor.donorName}
+                        </p>
+                        {donor.creatorName && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            via {donor.creatorName}
+                            {donor.creatorUsername ? ` (@${donor.creatorUsername})` : ''}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    <strong className="flex-shrink-0 text-primary">
+                    <strong className="flex-shrink-0 text-primary tabular-nums">
                       ₹{Number(donor.amount).toLocaleString('en-IN')}
                     </strong>
                   </div>
                 ))}
               </div>
+
+              {leaderboard.length === 25 && (
+                <p className="text-xs text-muted-foreground text-center py-3 border-t">
+                  Showing top 25 donors
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty leaderboard placeholder while loading */}
+        {leaderboardLoading && (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground text-sm">
+              Loading leaderboard...
             </CardContent>
           </Card>
         )}

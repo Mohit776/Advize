@@ -6,12 +6,12 @@
     ]
   },
   "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "rules": "main/firestore.rules",
+    "indexes": "main/firestore.indexes.json"
   },
   "storage": {
-    "rules": "storage.rules",
-    "cors": "storage.cors.json"
+    "rules": "main/storage.rules",
+    "cors": "main/storage.cors.json"
   },
   "hosting": {
     "public": "out",
