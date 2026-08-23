@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Heart, ExternalLink, CheckCircle2, User, Printer, Mail, ShieldCheck } from 'lucide-react';
+import { Copy, Heart, ExternalLink, CheckCircle2, User, Printer, Mail, ShieldCheck, Trophy, Award } from 'lucide-react';
 
 export default function DonatePage() {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -34,6 +34,10 @@ export default function DonatePage() {
     paymentDate: new Date().toISOString().slice(0, 10),
     paymentProofUrl: '',
   });
+
+  // Leaderboard state
+  const [leaderboard, setLeaderboard] = useState<{ rank: number; donorName: string; totalAmount: number; creatorName: string | null }[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
   const campaignRef = useMemoFirebase(
     () => (campaignId ? doc(firestore, 'campaigns', campaignId) : null),
@@ -71,6 +75,26 @@ export default function DonatePage() {
     };
     loadCreator();
   }, [creatorRef, firestore]);
+
+  // Fetch leaderboard from server-side API (bypasses Firestore rules)
+  useEffect(() => {
+    if (!campaignId) return;
+    const fetchLeaderboard = async () => {
+      try {
+        setLeaderboardLoading(true);
+        const res = await fetch(`/api/donations/leaderboard?campaignId=${campaignId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setLeaderboard(data.leaderboard || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch leaderboard', err);
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    };
+    fetchLeaderboard();
+  }, [campaignId, submitted]);
 
   const payment = campaign?.ngoPaymentDetails;
 
@@ -242,6 +266,89 @@ export default function DonatePage() {
             </Badge>
           </div>
         ) : null}
+
+        {/* Donor Leaderboard */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-amber-500" />
+              <CardTitle>Top Donors</CardTitle>
+            </div>
+            <CardDescription>Top 25 donors who contributed through our creator ambassadors</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {leaderboardLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+              </div>
+            ) : leaderboard.length === 0 ? (
+              <div className="text-center py-8">
+                <Award className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground mt-2">No donations yet. Be the first to donate!</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {leaderboard.map((entry) => {
+                  const isGold = entry.rank === 1;
+                  const isSilver = entry.rank === 2;
+                  const isBronze = entry.rank === 3;
+                  const isTop3 = isGold || isSilver || isBronze;
+
+                  return (
+                    <div
+                      key={entry.rank}
+                      className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                        isGold
+                          ? 'bg-amber-500/10 border border-amber-500/20'
+                          : isSilver
+                          ? 'bg-slate-300/10 border border-slate-400/20'
+                          : isBronze
+                          ? 'bg-orange-400/10 border border-orange-400/20'
+                          : 'bg-muted/30 border border-transparent'
+                      }`}
+                    >
+                      {/* Rank */}
+                      <div
+                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          isGold
+                            ? 'bg-amber-500 text-white'
+                            : isSilver
+                            ? 'bg-slate-400 text-white'
+                            : isBronze
+                            ? 'bg-orange-400 text-white'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {isTop3 ? (
+                          <Trophy className="h-4 w-4" />
+                        ) : (
+                          entry.rank
+                        )}
+                      </div>
+
+                      {/* Donor Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold truncate ${isTop3 ? 'text-base' : 'text-sm'}`}>
+                          {entry.donorName}
+                        </p>
+                        {entry.creatorName && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            via {entry.creatorName}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Amount */}
+                      <div className={`flex-shrink-0 font-bold ${isTop3 ? 'text-base text-primary' : 'text-sm'}`}>
+                        ₹{Number(entry.totalAmount).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* NGO Payment Methods Card */}
         <Card>
