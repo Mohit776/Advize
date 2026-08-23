@@ -5,7 +5,19 @@ import { getAdminFirestore } from '@/lib/firebase-admin';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { campaignId, creatorId, donorName, donorEmail, amount, currency = 'INR', paymentMethod, transactionReference, paymentDate, paymentProofUrl } = body || {};
+    const {
+      campaignId,
+      creatorId,
+      donorName,
+      donorEmail,
+      donorNumber,
+      amount,
+      currency = 'INR',
+      paymentMethod,
+      transactionReference,
+      paymentDate,
+      paymentProofUrl,
+    } = body || {};
 
     // Validate required fields
     if (!campaignId || !donorName || !donorEmail || !amount || Number(amount) <= 0 || !paymentMethod) {
@@ -15,6 +27,11 @@ export async function POST(request: Request) {
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donorEmail)) {
       return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 });
+    }
+
+    // Validate mobile number (10 digits, matches the client-side pattern)
+    if (!donorNumber || !/^[0-9]{10}$/.test(String(donorNumber))) {
+      return NextResponse.json({ error: 'Invalid or missing mobile number.' }, { status: 400 });
     }
 
     // Validate input length
@@ -98,6 +115,7 @@ export async function POST(request: Request) {
 
     const ref = db.collection('donations').doc();
     const formattedAmount = Number(amount);
+    const finalDonorNumber = String(donorNumber).trim();
 
     const donationData = {
       id: ref.id,
@@ -110,6 +128,7 @@ export async function POST(request: Request) {
       creatorUsername,
       donorName: String(donorName).trim(),
       donorEmail: String(donorEmail).trim().toLowerCase(),
+      donorNumber: finalDonorNumber,
       amount: formattedAmount,
       currency,
       paymentMethod: String(paymentMethod),
@@ -132,6 +151,7 @@ export async function POST(request: Request) {
         ngoName,
         donorName: String(donorName).trim(),
         donorEmail: String(donorEmail).trim().toLowerCase(),
+        donorNumber: finalDonorNumber,
         amount: formattedAmount,
         currency,
         paymentMethod: String(paymentMethod),

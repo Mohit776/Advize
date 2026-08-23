@@ -299,10 +299,15 @@ export type CreatorSearchResult = {
 export type Donation = {
   id: string;
   campaignId: string;
+  campaignName?: string;
   businessId: string;
+  ngoName?: string;
   creatorId?: string | null;
+  creatorName?: string | null;
+  creatorUsername?: string | null;
   donorName: string;
   donorEmail: string;
+  donorNumber: string;
   amount: number;
   currency: string;
   paymentMethod: string;
