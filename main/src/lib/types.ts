@@ -146,9 +146,10 @@ export type Submission = {
   creatorId: string;
   creatorName: string;
   postUrl: string;
+  profileLink?: string; // NEW: creator's profile link, captured at application time for private campaigns
   username: string;
   status: 'pending' | 'approved' | 'rejected';
-  submittedAt: any; // Using `any` for serverTimestamp
+  submittedAt: any;
   rejectionReason?: string;
 };
 
@@ -306,7 +307,7 @@ export type Donation = {
   creatorUsername?: string | null;
   donorName: string;
   donorEmail: string;
-  donorNumber?: string;
+  donorNumber: string;
   amount: number;
   currency: string;
   paymentMethod: string;

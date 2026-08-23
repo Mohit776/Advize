@@ -569,8 +569,10 @@ export default function CampaignDetailPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <CreatorPost creatorName={sub.creatorName} postUrl={sub.postUrl || sub.username}>
-                              <button className="text-primary hover:underline truncate max-w-[250px] block text-left">{sub.postUrl || sub.username}</button>
+                            <CreatorPost creatorName={sub.creatorName} postUrl={sub.postUrl || sub.profileLink || sub.username}>
+                              <button className="text-primary hover:underline truncate max-w-[250px] block text-left">
+                                {sub.postUrl || sub.profileLink || sub.username}
+                              </button>
                             </CreatorPost>
                           </TableCell>
                           <TableCell>
@@ -699,7 +701,7 @@ export default function CampaignDetailPage() {
                 <div className="border-t pt-6 space-y-4">
                   <div>
                     <h4 className="font-semibold mb-3 text-sm flex items-center gap-2">
-                       <Tags className="h-4 w-4" /> Barter Items
+                      <Tags className="h-4 w-4" /> Barter Items
                     </h4>
                     <div className="grid gap-3">
                       {campaignData.tryItemDetails.map((item, index) => (
