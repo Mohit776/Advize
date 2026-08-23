@@ -5,14 +5,19 @@ import { useParams } from 'next/navigation';
 import {
   doc,
   getDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import {
   ref as storageRef,
   uploadBytes,
   getDownloadURL,
 } from 'firebase/storage';
-import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import type { Campaign } from '@/lib/types';
+import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import type { Campaign, Donation } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -39,7 +44,14 @@ import {
   Printer,
   Mail,
   ShieldCheck,
+  Trophy,
 } from 'lucide-react';
+
+const RANK_STYLES: Record<number, string> = {
+  0: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+  1: 'bg-slate-400/15 text-slate-600 dark:text-slate-300 border-slate-400/30',
+  2: 'bg-amber-700/15 text-amber-800 dark:text-amber-500 border-amber-700/30',
+};
 
 export default function DonatePage() {
   // The route segment is a combined "{campaignId}_{creatorUid}" link
@@ -156,6 +168,32 @@ export default function DonatePage() {
     data: campaign,
     isLoading,
   } = useDoc<Campaign>(campaignRef);
+
+  /*
+   * Top 10 donors for this campaign, ranked by amount.
+   * Only verified donations count toward the leaderboard — submitted /
+   * under_review donations haven't been confirmed by the NGO yet, and
+   * rejected ones shouldn't be shown at all.
+   *
+   * Note: this composite query (campaignId + status + orderBy amount)
+   * needs a Firestore composite index. On first run, check the console
+   * for an index-creation link if the query errors out.
+   */
+  const topDonorsQuery = useMemoFirebase(
+    () =>
+      campaignId
+        ? query(
+          collection(firestore, 'donations'),
+          where('campaignId', '==', campaignId),
+          where('status', '==', 'verified'),
+          orderBy('amount', 'desc'),
+          limit(10)
+        )
+        : null,
+    [campaignId, firestore]
+  );
+
+  const { data: topDonors, isLoading: topDonorsLoading } = useCollection<Donation>(topDonorsQuery);
 
   /*
    * Load creator information directly by uid — creatorId is the real
@@ -653,6 +691,50 @@ export default function DonatePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Top Donors Leaderboard */}
+        {!topDonorsLoading && topDonors && topDonors.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                Top Donors
+              </CardTitle>
+
+              <CardDescription>
+                The most generous supporters of this campaign so far.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              <div className="space-y-2">
+                {topDonors.map((donor, index) => (
+                  <div
+                    key={donor.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`flex-shrink-0 h-7 w-7 rounded-full border flex items-center justify-center text-xs font-bold ${RANK_STYLES[index] || 'bg-muted text-muted-foreground border-border'
+                          }`}
+                      >
+                        {index + 1}
+                      </span>
+
+                      <p className="font-medium truncate">
+                        {donor.donorName}
+                      </p>
+                    </div>
+
+                    <strong className="flex-shrink-0 text-primary">
+                      ₹{Number(donor.amount).toLocaleString('en-IN')}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Creator Referral Attribution Banner */}
         {creatorUser && (
