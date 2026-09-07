@@ -19,6 +19,7 @@ import {
   Heart,
   ShieldCheck,
   Wallet,
+  Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -61,6 +62,27 @@ const platformIcons: { [key: string]: React.ReactNode } = {
   Snapchat: <Ghost className="h-5 w-5" />,
 };
 
+/** Splits text on URLs and renders each URL as a clickable <a> tag. */
+function renderWithLinks(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) =>
+    urlRegex.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary underline underline-offset-2 break-all hover:opacity-80"
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  );
+}
+
 export default function CampaignDetailPage() {
   const params = useParams();
   const campaignId = params.campaignId as string;
@@ -89,6 +111,8 @@ export default function CampaignDetailPage() {
   );
   const { data: existingSubmissions } = useCollection<Submission>(existingSubmissionQuery);
   const existingSubmission = existingSubmissions?.[0] ?? null;
+
+  const isOwner = Boolean(user && campaign?.businessId && user.uid === campaign.businessId);
 
   const handleWishlistToggle = () => {
     if (!user || !wishlistItemRef) {
@@ -127,9 +151,9 @@ export default function CampaignDetailPage() {
             <Skeleton className="h-32" />
             <Skeleton className="h-48" />
             <Skeleton className="h-48" />
-            <Skeleton className="h-96" />
           </div>
-          <div className="lg:col-span-1">
+          <div className="space-y-6">
+            <Skeleton className="h-48" />
             <Skeleton className="h-64" />
           </div>
         </div>
@@ -139,11 +163,14 @@ export default function CampaignDetailPage() {
 
   if (!campaign) {
     return (
-      <div className="container text-center py-10 px-4 md:px-6">
-        <p>Campaign not found.</p>
-        <Button asChild variant="link">
-          <Link href="/campaigns">Go back to campaigns</Link>
-        </Button>
+      <div className="container flex-1 p-4 pt-6 md:p-8">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold">Campaign not found</h2>
+          <p className="text-muted-foreground mt-2">This campaign may have ended or does not exist.</p>
+          <Button asChild className="mt-4">
+            <Link href="/campaigns">Back to Campaigns</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -153,9 +180,9 @@ export default function CampaignDetailPage() {
   const topCreators: CreatorPerformance[] = []; // Placeholder for real data
 
   return (
-    <div className="container flex-1 space-y-6 py-6 md:py-10 px-4 md:px-6">
+    <div className="container flex-1 space-y-6 p-4 pt-6 md:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" asChild>
             <Link href="/campaigns">
@@ -163,9 +190,14 @@ export default function CampaignDetailPage() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight font-headline">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">
               {campaign.name}
             </h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <span>{campaign.brandName || 'Brand'}</span>
+              <span>•</span>
+              <span className="capitalize">{campaign.type}</span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-center">
@@ -175,7 +207,7 @@ export default function CampaignDetailPage() {
           >
             {campaign.status}
           </Badge>
-          {user && (
+          {user && !isOwner && (
             <Button
               variant="outline"
               size="icon"
@@ -184,7 +216,14 @@ export default function CampaignDetailPage() {
               <Heart className={cn("h-5 w-5", isWishlisted && "fill-red-500 text-red-500")} />
             </Button>
           )}
-          {existingSubmission ? (
+          {isOwner ? (
+            <Button asChild variant="outline" className="gap-2">
+              <Link href={`/business/campaigns/${campaign.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+                Edit Campaign
+              </Link>
+            </Button>
+          ) : existingSubmission ? (
             <div className="flex items-center gap-2">
               {existingSubmission.status === 'approved' ? (
                 <SubmitContentModal submissionId={existingSubmission.id}>
@@ -247,7 +286,9 @@ export default function CampaignDetailPage() {
             <CardContent className="space-y-6">
               <div>
                 <h3 className="font-semibold mb-2">Brief</h3>
-                <p className="text-muted-foreground leading-relaxed">{campaign.description}</p>
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {renderWithLinks(campaign.description ?? '')}
+                </p>
               </div>
 
               <div className="border-t pt-6">

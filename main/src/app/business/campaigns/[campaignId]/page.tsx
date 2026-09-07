@@ -27,6 +27,7 @@ import {
   X,
   Youtube,
   Ban,
+  Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -423,12 +424,20 @@ export default function CampaignDetailPage() {
             </h2>
           </div>
         </div>
-        <Badge
-          variant={campaignData.status === 'Active' ? 'default' : 'secondary'}
-          className="bg-green-500/10 text-green-400 border-green-500/20"
-        >
-          {campaignData.status}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href={`/business/campaigns/${campaignId}/edit`}>
+              <Pencil className="h-4 w-4" />
+              Edit Campaign
+            </Link>
+          </Button>
+          <Badge
+            variant={campaignData.status === 'Active' ? 'default' : 'secondary'}
+            className="bg-green-500/10 text-green-400 border-green-500/20"
+          >
+            {campaignData.status}
+          </Badge>
+        </div>
       </div>
 
       {/* KPI Grid */}
