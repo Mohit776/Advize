@@ -20,6 +20,10 @@ export type Campaign = {
   donts: string;
   status: 'Active' | 'Completed' | 'Pending';
   platforms: string[];
+  demoContent?: {
+    link: string;
+    description: string;
+  }[];
   demoContentLink?: string;
   businessId: string;
   brandName: string; // Denormalized

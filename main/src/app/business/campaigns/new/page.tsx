@@ -291,9 +291,9 @@ export default function NewCampaignPage() {
       description: data.description,
       platforms: data.platforms,
       requirements: data.requirements,
-      dos: data.dos,
-      donts: data.donts,
-      demoContent: data.demoContent,
+      dos: data.dos || '',
+      donts: data.donts || '',
+      demoContent: data.demoContent || [],
       // Top-level fields
       visibility: data.visibility,
       type: data.type,

@@ -28,6 +28,7 @@ import {
   Youtube,
   Ban,
   Pencil,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -738,6 +739,52 @@ export default function CampaignDetailPage() {
                   </div>
                 </div>
               ) : null}
+
+              {((campaignData.demoContent && campaignData.demoContent.length > 0) || (campaignData as any).demoContentLink) && (
+                <div className="border-t pt-6 space-y-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4 text-primary" /> Reference & Demo Content
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Reference links provided for creators.
+                  </p>
+                  <div className="space-y-2">
+                    {campaignData.demoContent && campaignData.demoContent.map((item: any, index: number) => (
+                      <a
+                        key={index}
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors group"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">
+                            {item.description}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate">{item.link}</p>
+                        </div>
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </a>
+                    ))}
+                    {!campaignData.demoContent?.length && (campaignData as any).demoContentLink && (
+                      <a
+                        href={(campaignData as any).demoContentLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors group"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">
+                            Reference Link
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate">{(campaignData as any).demoContentLink}</p>
+                        </div>
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

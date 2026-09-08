@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Gem, Instagram, Mic2, Youtube, Linkedin, Facebook, Ghost, Heart } from 'lucide-react';
+import { Gem, Instagram, Mic2, Youtube, Linkedin, Facebook, Ghost, Heart, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
@@ -53,7 +53,9 @@ export function CampaignCard({
   campaignUrl,
   views,
   progress,
-  paid
+  paid,
+  demoContent,
+  demoContentLink,
 }: CampaignCardProps) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -117,7 +119,7 @@ export function CampaignCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-grow space-y-4 px-6 pb-4">
+      <CardContent className="flex-grow space-y-3 px-6 pb-4">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <div className="flex -space-x-2">
@@ -135,6 +137,44 @@ export function CampaignCard({
             </div>
           )}
         </div>
+
+        {((demoContent && demoContent.length > 0) || demoContentLink) && (
+          <div className="pt-2.5 border-t border-border/50 space-y-1.5">
+            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+              <ExternalLink className="h-3 w-3 text-primary" /> Reference / Demo:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {demoContent && demoContent.length > 0 ? (
+                demoContent.map((item, idx) => (
+                  <a
+                    key={idx}
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-md transition-colors"
+                    title={`${item.description}: ${item.link}`}
+                  >
+                    <span className="truncate max-w-[180px]">{item.description || 'Reference Link'}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
+                  </a>
+                ))
+              ) : demoContentLink ? (
+                <a
+                  href={demoContentLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-md transition-colors"
+                  title={demoContentLink}
+                >
+                  <span className="truncate max-w-[180px]">Reference Link</span>
+                  <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="p-4 pt-0 flex gap-2">
