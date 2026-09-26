@@ -128,15 +128,15 @@ export function SubmitContentModal({
         {children}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md mx-auto rounded-xl p-5 sm:p-6">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl font-bold break-words pr-6 text-left">
             {currentPostUrl
               ? 'Update Submitted Reel'
               : 'Submit Reel'}
           </DialogTitle>
 
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm text-left mt-1">
             {currentPostUrl
               ? 'Enter the new Instagram Reel URL. The new Reel will be sent for verification again.'
               : 'Enter the URL of the Instagram Reel you created for this campaign.'}
@@ -146,23 +146,24 @@ export function SubmitContentModal({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6"
+            className="space-y-5"
           >
             <FormField
               control={form.control}
               name="link"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Instagram Reel Link</FormLabel>
+                  <FormLabel className="text-sm font-medium">Instagram Reel Link</FormLabel>
 
                   <FormControl>
                     <Input
                       placeholder="https://www.instagram.com/reel/..."
                       {...field}
+                      className="h-10 text-sm"
                     />
                   </FormControl>
 
-                  <FormDescription>
+                  <FormDescription className="text-xs">
                     Paste the direct URL of the Reel you created for this campaign.
                   </FormDescription>
 
@@ -183,12 +184,13 @@ export function SubmitContentModal({
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0 mt-4">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={() => setIsOpen(false)}
                 disabled={isLoading}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
@@ -196,6 +198,7 @@ export function SubmitContentModal({
               <Button
                 type="submit"
                 disabled={isLoading}
+                className="w-full sm:w-auto"
               >
                 {isLoading
                   ? 'Submitting...'

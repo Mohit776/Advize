@@ -160,15 +160,17 @@ export function JoinCampaignModal({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md mx-auto rounded-xl p-5 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Join Campaign: {campaignName}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl font-bold break-words pr-6 text-left">
+            Join Campaign: {campaignName}
+          </DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm text-left mt-1">
             Submit your content for verification. Once approved, you'll be eligible for payouts.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-4">
               {visibility === 'public' ? (
                 <FormField
@@ -176,31 +178,34 @@ export function JoinCampaignModal({
                   name="link"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Post Link</FormLabel>
+                      <FormLabel className="text-sm font-medium">Post Link</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://instagram.com/p/..." {...field} />
+                        <Input placeholder="https://instagram.com/p/..." {...field} className="h-10 text-sm" />
                       </FormControl>
-                      <FormDescription>The direct URL to your video or post.</FormDescription>
+                      <FormDescription className="text-xs">The direct URL to your video or post.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               ) : (
-                <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">
+                <div className="text-xs sm:text-sm text-muted-foreground p-3.5 bg-muted/40 rounded-lg border border-border/50">
                   Your Instagram profile link will be automatically shared with the brand when you apply.
                 </div>
               )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0 mt-4">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={() => setIsOpen(false)}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button type="submit">Submit for Verification</Button>
+              <Button type="submit" className="w-full sm:w-auto">
+                Submit for Verification
+              </Button>
             </DialogFooter>
           </form>
         </Form>
