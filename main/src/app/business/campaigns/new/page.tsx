@@ -960,6 +960,36 @@ export default function NewCampaignPage() {
                     </FormItem>
                   )}
                 />
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="cpmRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CPM Rate (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" step="0.01" placeholder="1500" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormDescription>Cost per 1,000 views.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="maxPayPerCreator"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Maximum Pay Per Creator (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" step="0.01" placeholder="10000" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormDescription>The most any single creator can earn from this campaign, regardless of views.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
           )}
