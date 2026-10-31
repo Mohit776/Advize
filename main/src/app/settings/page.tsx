@@ -219,7 +219,10 @@ export default function SettingsPage() {
                             <CardTitle className="text-base text-destructive">Permanently Delete Account</CardTitle>
                             <CardDescription>This action is not reversible. All your data will be permanently removed. Please be certain.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
+                            <Button asChild variant="outline" size="sm">
+                                <Link href="/delete-account">Go to delete account page</Link>
+                            </Button>
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="destructive" disabled={isLoading}>
