@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.app.advize",
+      "sha256_cert_fingerprints": [
+        "A2:51:D9:03:DD:91:0E:6F:AC:62:51:05:24:E8:8F:CA:43:7E:B7:63:95:95:D4:91:3B:7B:AF:85:AE:50:D4:BD",
+        "05:6C:F0:F9:64:03:5E:A9:CC:C2:FC:99:92:19:6B:8F:62:D9:6C:65:2A:EA:0E:42:EB:1E:D3:C1:63:55:EF:0D"
+      ]
+    }
+  }
+]
